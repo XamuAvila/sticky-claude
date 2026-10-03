@@ -126,7 +126,7 @@ npm run pack    # só release\win-unpacked, para testar sem instalar
 | Arquivo | O que é |
 |---|---|
 | `Sticky-Claude-Instalador-<versão>.exe` | Instalador **por usuário, sem administrador** (instala em `%LOCALAPPDATA%\Programs\Sticky Claude`, atalho no Menu Iniciar) |
-| `Sticky-Claude-Portatil-<versão>.exe` | Um arquivo só, sem instalar. Abre mais devagar (~20 s), porque se extrai numa pasta temporária a cada abertura |
+| `Sticky-Claude-Portatil-<versão>.exe` | Um arquivo só, sem instalar. Abre mais devagar (de ~20 s a cerca de 1 minuto), porque se extrai numa pasta temporária a cada abertura |
 
 Os pacotes **não são assinados** (`signExecutable: false` em `electron-builder.yml`): não há certificado de assinatura de código. O ícone e os metadados do `.exe` são mantidos e o build roda sem privilégios.
 

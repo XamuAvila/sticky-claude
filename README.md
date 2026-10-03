@@ -119,9 +119,20 @@ Cada post-it tem cor, nome, instruções próprias e a sua conversa. Todos se es
 
 ## Instalação
 
-> Ainda **não há versão publicada** na aba *Releases*. Gere o instalador a partir do código (abaixo) ou rode direto do código.
+### Baixar (recomendado)
 
-### Instalador (recomendado)
+Na página de [**Releases**](https://github.com/XamuAvila/sticky-claude/releases/latest) há dois arquivos:
+
+| Arquivo | O que é |
+|---|---|
+| `Sticky-Claude-Instalador-0.1.0.exe` | Instalador **por usuário, sem administrador** (instala em `%LOCALAPPDATA%\Programs\Sticky Claude`, com atalho no Menu Iniciar). **Recomendado.** |
+| `Sticky-Claude-Portatil-0.1.0.exe` | Um arquivo só, sem instalar. Abre mais devagar (de ~20 s a cerca de 1 minuto), porque se extrai numa pasta temporária a cada abertura. |
+
+Para **atualizar**, instale a versão nova por cima: seus dados e a inicialização automática ficam como estavam.
+
+> Os pacotes **não são assinados**: o Windows SmartScreen pode avisar "Editor desconhecido". Clique em **Mais informações > Executar assim mesmo**. Para ter certeza de que o arquivo é o publicado, confira o hash com `Get-FileHash .\Sticky-Claude-Instalador-0.1.0.exe` e compare com o `SHA256SUMS.txt` da Release. Se preferir não depender de um binário pronto, gere o pacote você mesmo, abaixo.
+
+### Gerar o instalador a partir do código
 
 ```powershell
 git clone https://github.com/XamuAvila/sticky-claude.git
@@ -130,16 +141,7 @@ npm install
 npm run dist
 ```
 
-Saem em `release\`:
-
-| Arquivo | O que é |
-|---|---|
-| `Sticky-Claude-Instalador-0.1.0.exe` | Instalador **por usuário, sem administrador** (instala em `%LOCALAPPDATA%\Programs\Sticky Claude`, com atalho no Menu Iniciar). **Recomendado.** |
-| `Sticky-Claude-Portatil-0.1.0.exe` | Um arquivo só, sem instalar. Abre mais devagar (~20 s), porque se extrai numa pasta temporária a cada abertura. |
-
-Para **atualizar**, instale a versão nova por cima: seus dados e a inicialização automática ficam como estavam.
-
-> Os pacotes **não são assinados**: o Windows SmartScreen pode avisar "Editor desconhecido". Clique em **Mais informações > Executar assim mesmo**. Como você gera o pacote a partir do código, também pode conferir o que está sendo empacotado.
+Os mesmos dois arquivos saem em `release\`.
 
 ### Rodar direto do código
 
