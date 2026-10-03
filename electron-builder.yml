@@ -3,7 +3,7 @@
 #   npm run pack   -> release\win-unpacked (para testar sem instalar)
 appId: com.samuc.stickyclaude
 productName: Sticky Claude
-copyright: Uso pessoal
+copyright: Copyright (c) 2026 Samuel (XamuAvila). Licença MIT
 directories:
   output: release
   buildResources: build

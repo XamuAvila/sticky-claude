@@ -1,10 +1,10 @@
 # Sticky Claude
 
-App de Windows 11 que fica na bandeja do sistema e mostra, ao ligar o PC, um **briefing** com a sua agenda e os e-mails que pedem ação. A ideia seguinte (M3) são os **post-its**: janelas pequenas, sempre à vista, em que cada uma é uma conversa persistente com o Claude.
+App de Windows 11 que fica na bandeja do sistema e mostra, ao ligar o PC, um **briefing** com a sua agenda e os e-mails que pedem ação, além das suas **metas**. Também tem **post-its**: janelas pequenas, sempre à vista, em que cada uma é uma conversa persistente com o Claude, e uma **pílula** no topo da tela com o próximo evento ou a meta do dia.
 
-O app **usa a sua assinatura do Claude** por meio do `claude.exe` (Claude Code) que já está instalado e logado neste PC. Ele não usa chave de API, não usa o Agent SDK e não lê as suas credenciais.
+O app **usa a sua assinatura do Claude** por meio do `claude.exe` (Claude Code) que já está instalado e logado no PC de quem o usa. Ele não usa chave de API, não usa o Agent SDK, não embute credenciais nem oferece login: cada pessoa roda o app com o **próprio** Claude Code, na **própria** conta.
 
-> **Uso pessoal.** Não é feito para ser distribuído a outras pessoas.
+> Projeto pessoal, publicado sob a licença **MIT**, sem garantias (veja `LICENSE`). Não é um produto da Anthropic nem tem relação oficial com ela. Gmail e Google Calendar são acessados **somente para leitura**. O app não tem telemetria nem servidor próprio e não envia nada a terceiros; o que o Claude lê (e-mails, agenda, conversas) é processado pelo próprio Claude Code, nos termos da conta Anthropic de quem usa.
 
 ## Estado atual
 
@@ -111,7 +111,7 @@ Gerar os pacotes (a partir do código): `npm run dist`. Saem em `release\`:
 | `Sticky-Claude-Instalador-0.1.0.exe` | Instalador **por usuário, sem administrador** (instala em `%LOCALAPPDATA%\Programs\Sticky Claude`, atalho no Menu Iniciar). **Recomendado.** |
 | `Sticky-Claude-Portatil-0.1.0.exe` | Um arquivo só, sem instalar. Abre mais devagar (~20 s), porque se extrai numa pasta temporária a cada abertura. |
 
-Os pacotes **não são assinados** (uso pessoal): o Windows SmartScreen pode avisar "Editor desconhecido". Clique em **Mais informações > Executar assim mesmo**.
+Os pacotes **não são assinados** (não há certificado de assinatura de código): o Windows SmartScreen pode avisar "Editor desconhecido". Clique em **Mais informações > Executar assim mesmo**.
 
 **Instalar:** execute o instalador e siga as telas. Para atualizar, instale a versão nova por cima: seus dados e a inicialização automática ficam como estavam. (Ao atualizar, quem roda é o desinstalador da versão que já está instalada. Se ela for anterior ao conserto em `build/installer.nsh`, a primeira atualização ainda desliga a inicialização, e basta religar o interruptor; das seguintes em diante ela é preservada.)
 
@@ -227,3 +227,7 @@ tests/           testes unitários + integração real opcional
 scripts/         ícones e verificações no app real
 spike/           experimentos do M0 e seus resultados
 ```
+
+## Licença
+
+[MIT](LICENSE). Use, modifique e distribua à vontade, mantendo o aviso de copyright. Sem garantias.

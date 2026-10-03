@@ -4,7 +4,7 @@
   "description": "Sticky Claude: post-its com sessões do Claude e briefing de início para Windows",
   "author": "Samuel",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
