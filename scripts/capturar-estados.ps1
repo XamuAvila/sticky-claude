@@ -31,7 +31,7 @@ function Rodar([string]$caso, [hashtable]$vars, [string]$dadosDe = '') {
     New-Item -ItemType Directory -Path $dados -Force | Out-Null
     if ($dadosDe) { Copy-Item (Join-Path $saida "$dadosDe\dados\*") $dados -Recurse -Force }
     Semear-Metas $dados
-    $todas = @{ STICKY_DATA_DIR = $dados; STICKY_FAKE_CLAUDE = '1'; STICKY_SHOT_DIR = (Join-Path $pasta 'fotos'); STICKY_SHOT_QUIT = '1' }
+    $todas = @{ STICKY_DATA_DIR = $dados; STICKY_FAKE_CLAUDE = '1'; STICKY_PILULA = '0'; STICKY_SHOT_DIR = (Join-Path $pasta 'fotos'); STICKY_SHOT_QUIT = '1' }
     foreach ($k in $vars.Keys) { $todas[$k] = $vars[$k] }
     foreach ($k in $todas.Keys) { Set-Item -Path "Env:$k" -Value $todas[$k] }
     try {

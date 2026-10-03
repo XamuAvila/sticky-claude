@@ -4,6 +4,8 @@
 //                                              para o reinício do Windows
 //   node scripts/aceite-instalado.mjs depois   parte 2 (depois de reiniciar): confere que o app abriu SOZINHO no login e que o
 //                                              post-it retoma a mesma conversa, na mesma posição
+//   node scripts/aceite-instalado.mjs depois --sem-reinicio   o mesmo, mas em vez de esperar o Windows, executa o comando
+//                                              exato da entrada do registro (simula o login; NÃO prova um reinício de verdade)
 //   node scripts/aceite-instalado.mjs limpar   apaga o post-it de teste (e a sessão dele); NÃO mexe na inicialização automática
 // Usa um post-it separado ("Teste de aceite") para não encher o seu post-it "Metas" com mensagens de teste.
 import { _electron as electron } from 'playwright-core';
@@ -169,25 +171,54 @@ if (modo === 'antes') {
 if (modo === 'depois') {
   if (!existsSync(estadoArq)) { console.error('Sem estado da parte 1:', estadoArq); process.exit(2); }
   const est = JSON.parse(readFileSync(estadoArq, 'utf8'));
+  // --sem-reinicio: em vez de esperar o Windows abrir o app, executa o COMANDO EXATO da entrada do registro, como o Explorer
+  // faz no login. Prova o caminho de inicialização pelo login, mas NÃO é um reinício de verdade.
+  const simulado = process.argv.includes('--sem-reinicio');
   const ent = lerRun();
-  ok('a entrada de inicialização continua no registro depois do reinício', !!ent, ent);
+  ok(`a entrada de inicialização continua no registro${simulado ? '' : ' depois do reinício'}`, !!ent, ent);
 
-  // o app deve ter aberto SOZINHO no login (processo iniciado pelo Windows, com --autostart)
+  if (simulado) {
+    try { execSync('powershell -NoProfile -Command "Get-Process | Where-Object { $_.Path -like \'*Programs\\Sticky Claude*\' } | Stop-Process -Force"', { stdio: 'ignore' }); } catch {}
+    await espera(2000);
+    const m = /^"([^"]+)"\s*(.*)$/.exec(ent ?? '');
+    ok('o comando da entrada é interpretável (programa + argumentos)', !!m, m ? `args: ${m[2]}` : '');
+    const antes = logApp().length;
+    const { spawn } = await import('node:child_process');
+    spawn(m[1], m[2].split(' ').filter(Boolean), { detached: true, stdio: 'ignore' }).unref(); // igual ao Explorer no login
+    console.log('… app aberto como o Windows o abriria no login; aguardando a inicialização');
+    for (let i = 0; i < 400 && !logApp().slice(antes).some((l) => l.msg === 'interface pronta'); i++) await espera(300);
+    // espera o briefing do login terminar (ou o aviso de cache fresco)
+    for (let i = 0; i < 600; i++) {
+      const novos = logApp().slice(antes);
+      if (novos.some((l) => l.msg === 'cache fresco: briefing não executado no início')) break;
+      if (['agenda', 'emails', 'foco'].every((f) => novos.some((l) => l.msg === 'execução do claude' && l.fonte === f))) break;
+      await espera(500);
+    }
+  }
+
+  // o app deve ter aberto SOZINHO no login (processo iniciado com --autostart)
   const logs = logApp();
   const inicios = logs.filter((l) => l.msg === 'app iniciado');
   const ultimo = inicios.at(-1);
   console.log(`  último início registrado: ${ultimo?.t} | autostart=${ultimo?.autostart} | segundosDesdeBoot=${ultimo?.segundosDesdeBoot} | empacotado=${ultimo?.empacotado}`);
   ok('o último início foi pelo login (--autostart)', ultimo?.autostart === true);
-  ok('foi logo depois de ligar o PC (menos de 15 min de boot)', typeof ultimo?.segundosDesdeBoot === 'number' && ultimo.segundosDesdeBoot < 900, `${ultimo?.segundosDesdeBoot} s`);
+  if (simulado) console.log('  [ -- ] "logo depois de ligar o PC": não se aplica à simulação (o PC não foi reiniciado)');
+  else ok('foi logo depois de ligar o PC (menos de 15 min de boot)', typeof ultimo?.segundosDesdeBoot === 'number' && ultimo.segundosDesdeBoot < 900, `${ultimo?.segundosDesdeBoot} s`);
   const depoisDoInicio = logs.slice(logs.lastIndexOf(ultimo));
+  const cacheFresco = depoisDoInicio.some((l) => l.msg === 'cache fresco: briefing não executado no início');
   const rede = depoisDoInicio.find((l) => l.msg === 'rede');
-  console.log(`  rede: modo=${rede?.modo} resultado=${rede?.resultado} esperou=${rede?.esperouSegundos}s`);
-  ok('esperou a rede e ela subiu', rede?.modo === 'inicio' && rede?.resultado === 'ok');
-  ok('o briefing rodou no início (gatilho "inicio")', depoisDoInicio.some((l) => l.msg === 'briefing solicitado' && l.gatilho === 'inicio'));
+  if (cacheFresco) console.log('  [ -- ] cache do briefing ainda fresco (<20 min): o início só mostrou o cache, sem chamar o Claude (é o comportamento desenhado)');
+  else {
+    console.log(`  rede: modo=${rede?.modo} resultado=${rede?.resultado} esperou=${rede?.esperouSegundos}s`);
+    ok('esperou a rede e ela subiu', rede?.modo === 'inicio' && rede?.resultado === 'ok');
+    ok('o briefing rodou no início (gatilho "inicio")', depoisDoInicio.some((l) => l.msg === 'briefing solicitado' && l.gatilho === 'inicio'));
+  }
   ok('os post-its foram carregados e a interface ficou pronta', depoisDoInicio.some((l) => l.msg === 'post-its carregados') && depoisDoInicio.some((l) => l.msg === 'interface pronta'));
   const execs = depoisDoInicio.filter((l) => l.msg === 'execução do claude' && l.fonte !== 'postit');
-  console.log(`  execuções do briefing no login: ${execs.map((e) => `${e.fonte}:${e.ok ? 'ok' : 'erro:' + e.tipoErro}`).join(', ')}`);
-  ok('agenda, e-mails e foco concluíram no login', ['agenda', 'emails', 'foco'].every((f) => execs.some((e) => e.fonte === f && e.ok)));
+  if (!cacheFresco) {
+    console.log(`  execuções do briefing no login: ${execs.map((e) => `${e.fonte}:${e.ok ? 'ok' : 'erro:' + e.tipoErro}`).join(', ')}`);
+    ok('agenda, e-mails e foco concluíram no login', ['agenda', 'emails', 'foco'].every((f) => execs.some((e) => e.fonte === f && e.ok)));
+  }
 
   // o processo que o Windows abriu está de pé? (não vamos dirigi-lo: encerramos e abrimos de novo sob o Playwright)
   const vivo = (() => { try { return execSync('powershell -NoProfile -Command "(Get-Process | Where-Object { $_.Path -like \'*Programs\\Sticky Claude*\' } | Measure-Object).Count"', { encoding: 'utf8' }).trim(); } catch { return '0'; } })();
@@ -208,11 +239,12 @@ if (modo === 'depois') {
     ok('o post-it reabriu na mesma posição e no mesmo tamanho (e visível)', !!j && j.visivel && JSON.stringify(j.bounds) === JSON.stringify(est.bounds));
     ok('a conversa anterior está na tela', (await p.locator('.msg.usuario').count()) >= 2 && (await p.locator('.msg.usuario', { hasText: est.palavra }).count()) >= 1);
     const sess = lerPostits().find((x) => x.nome === NOME_TESTE);
-    ok('é a mesma sessão (mesmo session id) depois do reinício do Windows', sess.sessionId === est.sessionId && sess.iniciada === true);
-    ok('o histórico da sessão sobreviveu ao reinício', existsSync(arquivoSessao(est.sessionId)));
-    await enviar(p, 'Depois de reiniciar o Windows: qual era a palavra-teste? Responda somente a palavra.');
+    const apos = simulado ? 'depois de reabrir o app (SEM reiniciar o Windows)' : 'depois do reinício do Windows';
+    ok(`é a mesma sessão (mesmo session id) ${apos}`, sess.sessionId === est.sessionId && sess.iniciada === true);
+    ok('o histórico da sessão continua no Claude Code', existsSync(arquivoSessao(est.sessionId)));
+    await enviar(p, 'Depois de reabrir o app: qual era a palavra-teste? Responda somente a palavra.');
     const resp = await ultimaResposta(p);
-    ok('o Claude retomou a MESMA conversa depois do reinício (lembrou a palavra)', resp.includes(est.palavra), `"${resp}" | esperada ${est.palavra}`);
+    ok(`o Claude retomou a MESMA conversa ${apos} (lembrou a palavra)`, resp.includes(est.palavra), `"${resp}" | esperada ${est.palavra}`);
     await p.screenshot({ path: join(fotos, 'postit-depois-do-reinicio.png') });
   } finally {
     await app.close().catch(() => undefined);

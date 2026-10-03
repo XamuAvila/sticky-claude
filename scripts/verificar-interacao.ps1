@@ -39,6 +39,13 @@ function Checar($nome, $ok) {
 
 $env:STICKY_DATA_DIR = $dados
 $env:STICKY_FAKE_CLAUDE = '1'
+$env:STICKY_PILULA = '1'
+# briefing em cache (recente, completo) com um evento daqui a 25 min: a pilula tem o que mostrar e o app nao roda o briefing
+New-Item -ItemType Directory -Path $dados -Force | Out-Null
+$agoraIso = (Get-Date).ToUniversalTime().ToString('o')
+$ini = (Get-Date).ToUniversalTime().AddMinutes(25).ToString('o'); $fim = (Get-Date).ToUniversalTime().AddMinutes(55).ToString('o')
+$cache = @{ versao = 1; geradoEm = $agoraIso; agenda = @{ status = 'ok'; atualizadoEm = $agoraIso; dados = @{ eventos = @(@{ titulo = 'Reuniao de teste'; inicio = $ini; fim = $fim; diaInteiro = $false }) } }; emails = @{ status = 'ok'; atualizadoEm = $agoraIso; dados = @{ itens = @(); suspeitos = @() } }; foco = @{ status = 'ok'; atualizadoEm = $agoraIso; dados = @{ prioridades = @() } } }
+[IO.File]::WriteAllText((Join-Path $dados 'briefing.json'), ($cache | ConvertTo-Json -Depth 8), (New-Object Text.UTF8Encoding($false)))
 $p1 = Start-Process -FilePath $exe -ArgumentList ('"' + $raiz + '"') -PassThru
 try {
     Checar 'app iniciou e a interface ficou pronta' (Esperar 'interface pronta' 1 30)
@@ -50,17 +57,21 @@ try {
 
     # primeira execucao: o post-it "Metas" e criado e fica visivel junto com o painel
     Checar 'o post-it "Metas" foi criado e apareceu' (Esperar 'post-it vis' 1 15)
+    Checar 'a pilula do topo da tela apareceu (ha um evento daqui a 25 min)' (Esperar 'p.lula vis' 1 15)
     Start-Sleep -Seconds 1
 
     $vis0 = Contar 'painel vis'; $ocu0 = Contar 'painel oculto'
     $pvis0 = Contar 'post-it vis'; $pocu0 = Contar 'post-it oculto'
+    $lvis0 = Contar 'p.lula vis'; $locu0 = Contar 'p.lula oculta'
     [System.Windows.Forms.SendKeys]::SendWait('^%b')
     Checar 'Ctrl+Alt+B (1a vez) oculta o painel' ((Esperar 'atalho global acionado' 1 8) -and (Esperar 'painel oculto' ($ocu0 + 1) 8))
     Checar 'Ctrl+Alt+B (1a vez) oculta tambem os post-its' (Esperar 'post-it oculto' ($pocu0 + 1) 8)
+    Checar 'Ctrl+Alt+B (1a vez) oculta tambem a pilula' (Esperar 'p.lula oculta' ($locu0 + 1) 8)
     Start-Sleep -Milliseconds 800
     [System.Windows.Forms.SendKeys]::SendWait('^%b')
     Checar 'Ctrl+Alt+B (2a vez) mostra o painel de novo' ((Esperar 'atalho global acionado' 2 8) -and (Esperar 'painel vis' ($vis0 + 1) 8))
     Checar 'Ctrl+Alt+B (2a vez) devolve os post-its' (Esperar 'post-it vis' ($pvis0 + 1) 8)
+    Checar 'Ctrl+Alt+B (2a vez) devolve a pilula' (Esperar 'p.lula vis' ($lvis0 + 1) 8)
     Start-Sleep -Seconds 1
 
     # "X so oculta": manda ao Windows o pedido de fechar cada janela (WM_CLOSE), como o botao X faria
@@ -84,7 +95,7 @@ try {
 }
 finally {
     if ($p1 -and -not $p1.HasExited) { Stop-Process -Id $p1.Id -Force }
-    foreach ($v in 'STICKY_DATA_DIR', 'STICKY_FAKE_CLAUDE') { Remove-Item "Env:$v" -ErrorAction SilentlyContinue }
+    foreach ($v in 'STICKY_DATA_DIR', 'STICKY_FAKE_CLAUDE', 'STICKY_PILULA') { Remove-Item "Env:$v" -ErrorAction SilentlyContinue }
 }
 Write-Host ''
 if ($falhas -eq 0) { Write-Host 'Tudo certo.' -ForegroundColor Green } else { Write-Host ("$falhas verificacao(oes) falharam.") -ForegroundColor Red }

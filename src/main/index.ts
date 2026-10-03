@@ -19,6 +19,8 @@ import { registrarIpcMetas } from './metas/ipc';
 import { Propostas } from './metas/propostas';
 import { MetasStore } from './metas/store';
 import { aguardarRede, temRede } from './network';
+import { JanelaPilula } from './pilula/janela';
+import { PilulaService } from './pilula/servico';
 import { caminhos, dadosDir, garantirPastas } from './paths';
 import { ConversaService } from './postits/conversa';
 import { ConversasStore } from './postits/conversas';
@@ -42,6 +44,8 @@ let saindo = false;
 let logApp: Logger | null = null;
 let janelas: JanelasPostit | null = null;
 let aoMudarListaTray: (() => void) | null = null;
+let pilula: JanelaPilula | null = null;
+let aoMudarPilulaTray: ((ativa: boolean) => void) | null = null;
 /** O que o atalho global escondeu, para devolver exatamente igual (sem marcar nada como "oculto"). */
 let escondidoPeloAtalho: { painel: boolean; postits: string[] } | null = null;
 
@@ -160,9 +164,35 @@ function aoFicarPronto(): void {
   registrarIpcPostits({ ipc: ipcMain, store: postits, conversa, janelas, aoMudarLista, log });
   app.on('before-quit', () => postits.encerrar());
 
+  // Pílula no topo da tela: próximo evento ou meta do dia, só com o que já está no computador (sem gastar assinatura).
+  pilula = new JanelaPilula({ icone: imagem('icon.png'), log, aoAbrirPainel: mostrarPainel, aoMudarVisibilidade: () => aoMudarListaTray?.() });
+  const pilulaPadrao = process.env.STICKY_PILULA !== '0';
+  pilula.definirAtiva(lerPreferencias().pilulaAtiva ?? pilulaPadrao);
+  const calculoPilula = new PilulaService({
+    agenda: () => servico.snapshot().briefing.agenda.dados,
+    metas: () => metas.snapshot().metas,
+    diasParada: () => lerConfig().metasParadaDias ?? DIAS_PARADA_PADRAO,
+    agora: () => new Date(),
+    aoMudar: (c) => pilula?.definirConteudo(c),
+  });
+  servico.aoMudar(() => calculoPilula.recalcular());
+  metas.aoMudar(() => calculoPilula.recalcular());
+  app.on('before-quit', () => { calculoPilula.parar(); pilula?.destruir(); });
+  const definirPilula = (ativa: boolean) => {
+    pilula?.definirAtiva(ativa);
+    gravarPreferencias({ pilulaAtiva: ativa });
+    log.info(ativa ? 'pílula ligada' : 'pílula desligada');
+    aoMudarListaTray?.();
+    return { ativa };
+  };
+  ipcMain.handle('pilula:estado', () => ({ ativa: pilula?.estaAtiva() ?? false }));
+  ipcMain.handle('pilula:definir', (_e, ativa: unknown) => definirPilula(ativa === true));
+  aoMudarPilulaTray = definirPilula;
+
   criarPainel();
   criarBandeja(() => atualizar('manual'));
   janelas.abrirIniciais();
+  calculoPilula.iniciar();
   // Primeira execução do app: já deixa o post-it "Metas" pronto (sem acesso a e-mail/agenda; dá para ligar no menu dele).
   if (postits.primeiraExecucao && postits.snapshot().postits.length === 0) {
     janelas.novo({
@@ -227,16 +257,19 @@ function mostrarPainel(): void {
 /** Ctrl+Alt+B: se algo estiver à vista, esconde tudo (painel e post-its); senão, devolve tudo como estava. */
 function alternarTudo(): void {
   const painelVisivel = !!painel && !painel.isDestroyed() && painel.isVisible();
+  // A pílula não entra na conta de "algo à vista": ela fica sempre ali, e o atalho serve para trazer as janelas de volta.
   if (painelVisivel || janelas?.alguemVisivel()) {
     escondidoPeloAtalho = { painel: painelVisivel, postits: janelas?.visiveis() ?? [] };
     if (painelVisivel) painel!.hide();
     janelas?.esconderTemporariamente(escondidoPeloAtalho.postits);
+    pilula?.esconderPeloAtalho(); // "esconder tudo" inclui a pílula (a preferência dela não muda)
     return;
   }
   const e = escondidoPeloAtalho;
   escondidoPeloAtalho = null;
   if (!e || e.painel) mostrarPainel();
   janelas?.mostrarTemporariamente(e ? e.postits : (janelas?.idsNaoOcultos() ?? []));
+  pilula?.mostrarPeloAtalho();
 }
 
 function criarBandeja(atualizar: () => void): void {
@@ -260,6 +293,7 @@ function criarBandeja(atualizar: () => void): void {
         { label: 'Ocultar todos os post-its', click: () => janelas?.ocultarTodos() },
       ] : []),
       { type: 'separator' },
+      { label: 'Pílula no topo da tela', type: 'checkbox', checked: pilula?.estaAtiva() ?? false, click: (item) => aoMudarPilulaTray?.(item.checked) },
       { label: `Mostrar/ocultar tudo (${ATALHO.replace('Control', 'Ctrl')})`, click: alternarTudo },
       { type: 'separator' },
       { label: 'Sair', click: () => { saindo = true; app.quit(); } },

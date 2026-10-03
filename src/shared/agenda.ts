@@ -54,9 +54,11 @@ export function analisarAgenda(eventos: Evento[], agora: Date, horasProximas = 3
     let fim = e.fim ? lerData(e.fim) : null;
     if (e.diaInteiro) fim = new Date(inicioDoDia(inicio).getTime() + DIA_MS);
     if (!fim || fim.getTime() < inicio.getTime()) fim = inicio;
-    const dia = Math.round((inicioDoDia(inicio).getTime() - hoje0) / DIA_MS);
+    const diaDoInicio = Math.round((inicioDoDia(inicio).getTime() - hoje0) / DIA_MS);
     const passou = !e.diaInteiro && fim.getTime() <= agora.getTime() && fim.getTime() > inicio.getTime();
     const emAndamento = !e.diaInteiro && inicio.getTime() <= agora.getTime() && fim.getTime() > agora.getTime();
+    // Um evento que começou ontem e ainda está rolando (atravessa a meia-noite) acontece HOJE, agora: não pode sumir.
+    const dia = emAndamento ? Math.max(diaDoInicio, 0) : diaDoInicio;
     const an: EventoAn = { titulo: e.titulo, inicio, fim, diaInteiro: e.diaInteiro, dia, passou, emAndamento };
     if (e.local) an.local = e.local;
     if (dia === 0 && !e.diaInteiro && inicio.getTime() > agora.getTime()) {

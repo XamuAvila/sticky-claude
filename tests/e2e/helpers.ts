@@ -21,7 +21,9 @@ export interface AppE2E {
   /** Janela de um post-it, pelo nome (espera até aparecer). */
   postit: (nome: string, ms?: number) => Promise<Page>;
   /** Estado das janelas nativas (BrowserWindow) vistas pelo processo principal. */
-  janelasNativas: () => Promise<Array<{ titulo: string; visivel: boolean; topo: boolean; bounds: { x: number; y: number; width: number; height: number } }>>;
+  janelasNativas: () => Promise<Array<{ titulo: string; visivel: boolean; topo: boolean; focavel: boolean; bounds: { x: number; y: number; width: number; height: number } }>>;
+  /** Área útil da tela principal (sem a barra de tarefas), em DIPs. */
+  areaUtil: () => Promise<{ x: number; y: number; width: number; height: number }>;
   /** apagar=false mantém a pasta de dados (para "reiniciar" o app com os mesmos dados). */
   fechar: (apagar?: boolean) => Promise<void>;
   /** Mata o processo de uma vez, sem o app poder se despedir (como um desligamento forçado). */
@@ -34,6 +36,8 @@ export interface OpcoesApp {
   /** Conteúdo inicial de metas.json (objeto) ou texto cru (para testar arquivo corrompido). */
   metas?: unknown;
   metasTextoCru?: string;
+  /** Conteúdo inicial de briefing.json (cache): se for recente e completo, o app não executa o briefing no início. */
+  briefing?: unknown;
   env?: Record<string, string>;
   tema?: 'light' | 'dark';
 }
@@ -45,10 +49,12 @@ export async function abrirApp(o: OpcoesApp = {}): Promise<AppE2E> {
   const arquivoMetas = join(dados, 'metas.json');
   if (o.metasTextoCru !== undefined) writeFileSync(arquivoMetas, o.metasTextoCru);
   else if (o.metas !== undefined) writeFileSync(arquivoMetas, JSON.stringify(o.metas));
+  if (o.briefing !== undefined) writeFileSync(join(dados, 'briefing.json'), JSON.stringify(o.briefing));
 
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && k !== 'ELECTRON_RUN_AS_NODE') env[k] = v;
-  Object.assign(env, { STICKY_DATA_DIR: dados, STICKY_FAKE_CLAUDE: '1', STICKY_THEME: o.tema ?? 'light', ...(o.env ?? {}) });
+  // STICKY_PILULA=0: a pílula (janela no topo da tela) só aparece nos testes que a pedem, para não piscar no seu monitor
+  Object.assign(env, { STICKY_DATA_DIR: dados, STICKY_FAKE_CLAUDE: '1', STICKY_THEME: o.tema ?? 'light', STICKY_PILULA: '0', ...(o.env ?? {}) });
 
   // Reabrir logo depois de um processo morto à força pode esbarrar nos filhos dele que ainda estão saindo: tenta de novo.
   let app!: ElectronApplication;
@@ -91,7 +97,8 @@ export async function abrirApp(o: OpcoesApp = {}): Promise<AppE2E> {
       }
     },
     janelasNativas: () => app.evaluate(({ BrowserWindow }) =>
-      BrowserWindow.getAllWindows().map((w) => ({ titulo: w.getTitle(), visivel: w.isVisible(), topo: w.isAlwaysOnTop(), bounds: w.getBounds() }))),
+      BrowserWindow.getAllWindows().map((w) => ({ titulo: w.getTitle(), visivel: w.isVisible(), topo: w.isAlwaysOnTop(), focavel: w.isFocusable(), bounds: w.getBounds() }))),
+    areaUtil: () => app.evaluate(({ screen }) => screen.getPrimaryDisplay().workArea),
     fechar: async (apagar = true) => {
       await app.close().catch(() => undefined);
       if (apagar) rmSync(dados, { recursive: true, force: true });

@@ -22,6 +22,7 @@ $cache = @{ versao = 1; geradoEm = $agora; agenda = @{ status = 'ok'; atualizado
 
 $runAntes = (reg query 'HKCU\Software\Microsoft\Windows\CurrentVersion\Run' 2>$null) -join "`n"
 $env:STICKY_DATA_DIR = $dados
+$env:STICKY_PILULA = '0' # sem a janela da pilula piscando no topo da sua tela durante o teste
 Write-Host "Portatil: $($exe.FullName)  ($([math]::Round($exe.Length / 1MB, 1)) MB)"
 $inicio = Get-Date
 $p = Start-Process -FilePath $exe.FullName -PassThru
@@ -40,6 +41,7 @@ finally {
     # encerra o app e o envelope portatil (so os processos deste exe)
     Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -and ($_.Path -like '*Sticky-Claude-Portatil*' -or $_.Path -like "$env:TEMP\*Sticky Claude*" -or $_.Path -like "$env:LOCALAPPDATA\Temp\*Sticky Claude*") } | Stop-Process -Force -ErrorAction SilentlyContinue
     Remove-Item Env:STICKY_DATA_DIR -ErrorAction SilentlyContinue
+    Remove-Item Env:STICKY_PILULA -ErrorAction SilentlyContinue
 }
 Start-Sleep -Seconds 1
 $runDepois = (reg query 'HKCU\Software\Microsoft\Windows\CurrentVersion\Run' 2>$null) -join "`n"

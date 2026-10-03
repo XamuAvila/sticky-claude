@@ -14,8 +14,8 @@ O app **usa a sua assinatura do Claude** por meio do `claude.exe` (Claude Code) 
 | M1 Bandeja + briefing | **Pronto** |
 | M2 Metas | **Pronto** |
 | M3 Post-its persistentes | **Pronto** |
-| M4 Inicialização automática + instalador | Código, instalador e portátil prontos e verificados **sem tocar no seu Windows**. Falta o roteiro no Windows real (instalar, ligar a inicialização, reiniciar), que depende da sua confirmação |
-| M5 Pílula no topo da tela | Pendente |
+| M4 Inicialização automática + instalador | **Pronto** (instalado e verificado no seu Windows; o único item não verificado é o reinício físico, veja "Roteiro de aceite") |
+| M5 Pílula no topo da tela | **Pronto** |
 
 ## O que o M1 faz
 
@@ -71,6 +71,37 @@ Cada **post-it é uma janela pequena, sem moldura e redimensionável, com uma co
 
 A cópia local da conversa fica em `%APPDATA%\StickyClaude\conversas\<id>.json` (até 300 mensagens). O contexto de verdade fica na sessão do Claude. Excluir um post-it não apaga a sessão do histórico do Claude Code; para isso use `claude purge`.
 
+## Roteiro de aceite
+
+Executado no app **instalado**, com os seus dados e o Claude **reais** (`node scripts/aceite-instalado.mjs`):
+
+| # | Item | Resultado |
+|---|---|---|
+| 1 | Reiniciar o Windows e o app abrir sozinho | **Parcial.** Não foi feito um reinício de verdade (você preferiu pular). Provado: a entrada `com.samuc.stickyclaude` existe em `HKCU\...\Run` com `"<exe instalado>" --autostart`; executando **exatamente esse comando** (como o Explorer faz no login) o app abre com `autostart=true`, mostra o painel, reabre os post-its e roda o briefing do início. Não foi provado: o Windows disparar a entrada no boot real e a espera da rede com o PC acabando de ligar (a espera tem teste automatizado, com a rede "subindo" aos poucos). |
+| 2 | O briefing aparece com agenda e e-mails reais | **Sim.** Agenda (44 itens), e-mails e foco em 43 s, sem erro, no app instalado. |
+| 3 | O post-it retoma a mesma conversa depois de reiniciar | **Sim, reiniciando o app** (fechar e abrir de novo, mesma posição, mesmo tamanho, mesmo session id, o Claude lembrou a palavra-teste). **Não** com um reinício físico do Windows, mas a sessão fica em arquivo no disco (`~\.claude\projects`) e nada disso depende do boot. Usei um post-it de teste, que foi apagado depois, para não encher o seu "Metas". |
+| 4 | Fechar um post-it não encerra a sessão | **Sim.** O X ocultou, a sessão e o histórico no Claude permaneceram, e ao mostrar de novo a mesma conversa continuou (o Claude lembrou a palavra). |
+| 5 | Desligar a inicialização automática remove a entrada de verdade | **Sim.** Ligar pelo interruptor (com a confirmação) criou a entrada; desligar a removeu (`reg query` não a encontrou); religar a recriou sem perguntar de novo. As entradas de Opera, Docker, Steam e Edge não foram tocadas em nenhum momento. |
+
+## Pílula no topo da tela (M5)
+
+Uma **pílula escura, no centro do topo da tela principal** (estilo Dynamic Island), mostra o que importa agora. A referência de UX é a ideia do mod "Dynamic Island for Windows" do Windhawk (MIT); **nenhum código dele foi copiado**.
+
+Ordem do que ela mostra:
+1. um evento começando em **até 10 min** (ponto vermelho piscando: "Em 8 min · Ligação");
+2. um evento **em andamento** ("Agora · Deep Work · até 10:00");
+3. o próximo evento em **até 2 h** ("Em 45 min · Planejamento");
+4. a **meta do dia** (a mais atrasada, depois a mais parada, depois a de prazo mais próximo), com o próximo passo;
+5. um evento mais tarde **hoje**.
+
+Sem nada disso, a pílula nem aparece. Eventos que atravessam a meia-noite contam (um evento às 00:15 visto às 23:50 é "Em 25 min").
+
+- **Passe o mouse** para expandir (agenda das próximas horas e a meta do dia); **clique** para abrir o painel.
+- A janela é transparente e **deixa o mouse atravessar**: só captura o ponteiro enquanto ele está sobre a própria pílula. Não tira o foco de quem está digitando e não aparece na barra de tarefas.
+- **Não gasta assinatura:** usa só o briefing em cache e as metas locais, recalculando a cada 30 s para o "em 12 min" andar sozinho.
+- Liga e desliga em **Configurações > Pílula no topo da tela** ou no menu da bandeja (a escolha fica gravada). **Ctrl+Alt+B** esconde e devolve a pílula junto com o painel e os post-its, sem mudar a sua escolha.
+- Fica na tela principal, centralizada na área útil, e se reposiciona se os monitores mudarem.
+
 ## Instalar, usar e desinstalar (M4)
 
 Gerar os pacotes (a partir do código): `npm run dist`. Saem em `release\`:
@@ -118,9 +149,9 @@ npx electron .                           # ou: npm run dev
 ## Testes
 
 ```powershell
-npm test                  # 210 testes unitários (parser, agenda, metas, post-its, geometria, inicialização, política de ferramentas, serviços, rede, armazenamento)
+npm test                  # 229 testes unitários (parser, agenda, metas, post-its, geometria, inicialização, pílula, política de ferramentas, serviços, rede, armazenamento)
 npm run typecheck
-npm run build; npm run test:e2e   # 21 testes E2E no app real (cliques, digitação, reinício do app), com dados temporários e sem gastar assinatura
+npm run build; npm run test:e2e   # 30 testes E2E no app real (cliques, digitação, reinício do app, pílula), com dados temporários e sem gastar assinatura
 ```
 
 Testes de integração **reais**, que consomem a assinatura (imprimem só contagens e resultados):
@@ -135,9 +166,10 @@ Remove-Item Env:STICKY_LIVE
 Verificações no app real **sem gastar assinatura** (executor falso, dados sintéticos, pasta temporária):
 
 ```powershell
-.\scripts\verificar-interacao.ps1   # bandeja, atalho Ctrl+Alt+B (painel e post-its), "X só oculta", instância única
+.\scripts\verificar-interacao.ps1   # bandeja, atalho Ctrl+Alt+B (painel, post-its e pílula), "X só oculta", instância única
 .\scripts\capturar-estados.ps1      # capturas do painel: tema claro/escuro, sem internet, aguardando rede, metas, editor e proposta
 node scripts/capturar-postits.mjs   # capturas das janelas dos post-its: conversa, menu, instruções, cores
+node scripts/capturar-pilula.mjs    # capturas da pílula: compacta e expandida (em breve, urgente, agora, meta atrasada)
 ```
 
 Verificação dos **pacotes** (precisa de `npm run dist`); nenhuma instala nada nem liga a inicialização automática:
@@ -166,7 +198,7 @@ Com `STICKY_DATA_DIR` definido (testes e verificações), o app também isola a 
 
 ## Onde ficam os dados
 
-`%APPDATA%\StickyClaude\`: `briefing.json` (cache), `metas.json` (suas metas), `backups\` (cópias das metas), `postits.json` (post-its: sessão, cor, instruções, posição e monitor), `conversas\` (cópia local do texto de cada conversa), `servidores.json` (conectores já vistos), `config.json` (opcional: `claudePath`, `metasParadaDias`, `modeloPostits`, `esforcoPostits`), `logs\`, `workspace\` (pasta de trabalho do Claude: as sessões dos post-its são indexadas por ela).
+`%APPDATA%\StickyClaude\`: `briefing.json` (cache), `metas.json` (suas metas), `backups\` (cópias das metas), `postits.json` (post-its: sessão, cor, instruções, posição e monitor), `conversas\` (cópia local do texto de cada conversa), `preferencias.json` (escolhas do app: confirmação da inicialização, pílula), `servidores.json` (conectores já vistos), `config.json` (opcional: `claudePath`, `metasParadaDias`, `modeloPostits`, `esforcoPostits`), `logs\`, `workspace\` (pasta de trabalho do Claude: as sessões dos post-its são indexadas por ela).
 
 ## Desinstalar
 
@@ -176,9 +208,9 @@ No M1 não há instalação: basta fechar o app (menu da bandeja → **Sair**) e
 
 ```
 src/main/        processo principal: bandeja, atalho, janelas, briefing (parser, serviço, executor), metas (armazenamento, propostas),
-                 post-its (estado, geometria, janelas, conversa, executor), política do Claude
+                 post-its (estado, geometria, janelas, conversa, executor), pílula (janela e serviço), inicialização automática, política do Claude
 src/preload/     ponte segura entre o processo principal e as telas
-src/renderer/    telas (React): painel e post-it
+src/renderer/    telas (React): painel, post-it e pílula
 src/shared/      tipos e a lógica da agenda, usados pelos dois lados
 tests/           testes unitários + integração real opcional
 scripts/         ícones e verificações no app real

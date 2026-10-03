@@ -1,0 +1,49 @@
+/* A pílula é preta nos dois temas (como a Dynamic Island): o fundo da janela é transparente. */
+:root { color-scheme: dark; --verde: #5fd38d; --ambar: #f5c542; --vermelho: #ff6b57; --azul: #6aaeea; }
+* { box-sizing: border-box; }
+html, body, #raiz { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+body { font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; font-size: 13px; color: #fff; -webkit-font-smoothing: antialiased; user-select: none; }
+
+.palco { display: flex; justify-content: center; padding-top: 0; }
+
+.pilula {
+  max-width: 460px; min-width: 150px; background: #0a0a0b; color: #fff;
+  border-radius: 999px; padding: 7px 16px; cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14), 0 8px 24px rgba(0, 0, 0, 0.45);
+  transition: border-radius 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), padding 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s;
+}
+.pilula.aberta { border-radius: 22px; padding: 10px 16px 12px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2), 0 14px 36px rgba(0, 0, 0, 0.55); }
+
+.linha { display: flex; align-items: center; gap: 8px; min-width: 0; white-space: nowrap; }
+.ponto { width: 8px; height: 8px; border-radius: 50%; background: var(--azul); flex: none; }
+.modo-agora .ponto { background: var(--verde); }
+.modo-em-breve .ponto, .modo-depois .ponto { background: var(--ambar); }
+.modo-urgente .ponto { background: var(--vermelho); animation: pulsa 1.2s ease-in-out infinite; }
+.modo-meta .ponto { background: var(--azul); }
+.modo-meta.urgente .ponto { background: var(--vermelho); }
+@keyframes pulsa { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(0.8); } }
+
+.rotulo { font-weight: 700; color: rgba(255, 255, 255, 0.72); flex: none; }
+.titulo { font-weight: 600; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.detalhe { color: rgba(255, 255, 255, 0.62); flex: none; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+
+/* Parte que se expande (altura animada sem medir nada) */
+.extra { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s; }
+.aberta .extra { grid-template-rows: 1fr; opacity: 1; }
+.extra-interno { overflow: hidden; min-height: 0; }
+.eventos { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; }
+.eventos li { display: grid; grid-template-columns: 46px 1fr auto; gap: 8px; align-items: baseline; color: rgba(255, 255, 255, 0.86); }
+.eventos .hora { color: rgba(255, 255, 255, 0.5); font-variant-numeric: tabular-nums; }
+.eventos .nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eventos li.agora .nome { color: #fff; font-weight: 600; }
+.selo { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 99px; background: var(--verde); color: #04210f; }
+.meta { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 8px; margin-top: 10px; padding-top: 9px; border-top: 1px solid rgba(255, 255, 255, 0.14); }
+.meta-rotulo { grid-column: 1 / -1; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
+.meta-nome { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; grid-column: 1 / 3; }
+.meta-situacao { color: rgba(255, 255, 255, 0.6); font-size: 12px; }
+.meta.atrasada .meta-situacao { color: var(--vermelho); font-weight: 600; }
+.meta.parada .meta-situacao { color: var(--ambar); font-weight: 600; }
+.meta-passo { grid-column: 1 / -1; color: rgba(255, 255, 255, 0.78); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dica { margin-top: 9px; font-size: 11px; color: rgba(255, 255, 255, 0.4); text-align: center; }
+
+@media (prefers-reduced-motion: reduce) { .pilula, .extra { transition: none; } .modo-urgente .ponto { animation: none; } }

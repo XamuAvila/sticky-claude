@@ -4,6 +4,7 @@ import type { EstadoAutoInicio } from '@shared/autoinicio';
 /** Configurações: por enquanto, só o interruptor "Iniciar com o Windows" (com confirmação na primeira vez). */
 export function Configuracoes() {
   const [estado, setEstado] = useState<EstadoAutoInicio | null>(null);
+  const [pilula, setPilula] = useState<boolean | null>(null);
   const [erro, setErro] = useState('');
   const [ocupado, setOcupado] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
@@ -12,6 +13,7 @@ export function Configuracoes() {
   useEffect(() => {
     let vivo = true;
     void window.sticky.autoinicio.estado().then((e) => { if (vivo) setEstado(e); });
+    void window.sticky.pilula.estado().then((e) => { if (vivo) setPilula(e.ativa); });
     return () => { vivo = false; };
   }, []);
 
@@ -62,6 +64,18 @@ export function Configuracoes() {
               O Windows está bloqueando essa entrada (ela foi desativada em Configurações &gt; Aplicativos &gt; Inicialização). Reative por lá para valer no próximo login.
             </p>
           )}
+
+          <hr className="divisor" />
+          <label className="interruptor">
+            <input type="checkbox" role="switch" checked={pilula ?? false} disabled={pilula === null}
+              onChange={(e) => { const v = e.target.checked; setPilula(v); void window.sticky.pilula.definir(v).then((r) => setPilula(r.ativa)); }}
+              aria-describedby="ajuda-pilula" />
+            <span className="trilho" aria-hidden="true"><span className="bolinha" /></span>
+            <span className="texto-interruptor"><strong>Pílula no topo da tela</strong></span>
+          </label>
+          <p id="ajuda-pilula" className="ajuda">
+            Uma pílula discreta no centro do topo da tela mostra o próximo evento ou a meta do dia. Passe o mouse para ver mais; clique para abrir o painel. Usa só o que já está no computador, sem gastar a assinatura.
+          </p>
         </>
       )}
       {erro && <p className="aviso-erro" role="alert">{erro}</p>}

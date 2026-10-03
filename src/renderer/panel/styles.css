@@ -197,6 +197,7 @@ dialog.dialogo label input, dialog.dialogo label select, dialog.dialogo label te
 .interruptor input:checked + .trilho .bolinha { transform: translateX(18px); background: #2b2100; }
 .interruptor input:focus-visible + .trilho { outline: 2px solid var(--texto); outline-offset: 2px; }
 .ajuda { color: var(--suave); font-size: 13px; margin: 8px 0 0; }
+.divisor { border: 0; border-top: 1px solid var(--borda); margin: 14px 0; }
 dialog.dialogo code { font-family: 'Cascadia Mono', Consolas, monospace; font-size: 12px; overflow-wrap: anywhere; }
 
 .abrindo { display: grid; place-items: center; height: 100%; color: var(--suave); }

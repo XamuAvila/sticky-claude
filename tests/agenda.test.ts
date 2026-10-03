@@ -87,6 +87,16 @@ describe('analisarAgenda', () => {
     expect(por['passou']!.passou).toBe(true);
   });
 
+  it('evento que começou ontem e ainda está rolando aparece em HOJE (atravessa a meia-noite)', () => {
+    const madrugada = new Date(2026, 9, 3, 0, 27);
+    const a = analisarAgenda([ev('Plantão', new Date(2026, 9, 2, 23, 57).toISOString(), new Date(2026, 9, 3, 4, 0).toISOString())], madrugada);
+    expect(a.hoje.map((e) => e.titulo)).toEqual(['Plantão']);
+    expect(a.hoje[0]!.emAndamento).toBe(true);
+    // e um que já terminou ontem continua de fora
+    const velho = analisarAgenda([ev('Ontem', new Date(2026, 9, 2, 20, 0).toISOString(), new Date(2026, 9, 2, 21, 0).toISOString())], madrugada);
+    expect(velho.hoje).toHaveLength(0);
+  });
+
   it('ignora datas inválidas sem quebrar', () => {
     expect(analisarAgenda([ev('x', 'lixo')], AGORA).hoje).toHaveLength(0);
   });

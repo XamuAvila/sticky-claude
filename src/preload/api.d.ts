@@ -1,6 +1,7 @@
 import type { EstadoAutoInicio, ResultadoAuto } from '@shared/autoinicio';
 import type { BriefingSnapshot } from '@shared/briefing';
 import type { Meta, MetaEntrada, MetaEntradaParcial, PropostaMetas, Retorno, SnapshotMetas } from '@shared/metas';
+import type { ConteudoPilula } from '@shared/pilula';
 import type { EventoPostit, ResumoPostit, VisaoPostit } from '@shared/postits';
 
 export interface StickyApi {
@@ -39,6 +40,17 @@ export interface StickyApi {
     /** Único jeito de apagar um post-it. */
     excluir(id: string): Promise<Retorno>;
     aoEvento(cb: (e: EventoPostit) => void): () => void;
+  };
+  /** Pílula no topo da tela (próximo evento ou meta do dia). */
+  pilula: {
+    obter(): Promise<ConteudoPilula | null>;
+    aoMudar(cb: (c: ConteudoPilula | null) => void): () => void;
+    /** true enquanto o ponteiro está sobre a pílula: a janela passa a capturar o mouse (senão o mouse atravessa). */
+    interativa(sobre: boolean): Promise<void>;
+    abrirPainel(): Promise<void>;
+    /** Preferência (cartão Configurações do painel). */
+    estado(): Promise<{ ativa: boolean }>;
+    definir(ativa: boolean): Promise<{ ativa: boolean }>;
   };
   /** Inicialização com o Windows (entrada em HKCU\...\Run, só do usuário). */
   autoinicio: {

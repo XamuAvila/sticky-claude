@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { EstadoAutoInicio, ResultadoAuto } from '@shared/autoinicio';
 import type { BriefingSnapshot } from '@shared/briefing';
 import type { Meta, PropostaMetas, Retorno, SnapshotMetas } from '@shared/metas';
+import type { ConteudoPilula } from '@shared/pilula';
 import type { EventoPostit, ResumoPostit, VisaoPostit } from '@shared/postits';
 import type { StickyApi } from './api';
 
@@ -44,6 +45,14 @@ const api: StickyApi = {
     ocultar: (id) => chamar<void>('postit:ocultar', id),
     excluir: (id) => chamar<Retorno>('postit:excluir', id),
     aoEvento: (cb) => assinar<EventoPostit>('postit:evento', cb),
+  },
+  pilula: {
+    obter: () => chamar<ConteudoPilula | null>('pilula:obter'),
+    aoMudar: (cb) => assinar<ConteudoPilula | null>('pilula:conteudo', cb),
+    interativa: (sobre) => chamar<void>('pilula:interativa', sobre),
+    abrirPainel: () => chamar<void>('pilula:abrir-painel'),
+    estado: () => chamar<{ ativa: boolean }>('pilula:estado'),
+    definir: (ativa) => chamar<{ ativa: boolean }>('pilula:definir', ativa),
   },
   autoinicio: {
     estado: () => chamar<EstadoAutoInicio>('autoinicio:estado'),

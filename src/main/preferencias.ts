@@ -6,6 +6,8 @@ import { gravarJsonAtomico, lerJson } from './storage';
 const PreferenciasSchema = z.object({
   /** O usuário já confirmou, uma vez, a criação da entrada de inicialização. */
   autoInicioConfirmado: z.boolean().optional(),
+  /** Mostrar a pílula no topo da tela (padrão: sim). */
+  pilulaAtiva: z.boolean().optional(),
 });
 export type Preferencias = z.infer<typeof PreferenciasSchema>;
 
