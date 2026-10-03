@@ -139,6 +139,7 @@ Os pacotes **não são assinados** (uso pessoal): o Windows SmartScreen pode avi
 ## Como rodar (a partir do código)
 
 ```powershell
+git clone https://github.com/XamuAvila/sticky-claude.git
 cd sticky-claude
 npm install
 node node_modules\electron\install.js   # baixa o binário do Electron (o Electron 44 não faz isso sozinho)

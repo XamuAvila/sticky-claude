@@ -45,7 +45,9 @@ const outrasEntradas = () => { try { return execSync('reg query "HKCU\\Software\
 
 const lerPostits = () => JSON.parse(readFileSync(join(dados, 'postits.json'), 'utf8')).postits;
 const logApp = () => (existsSync(join(dados, 'logs', 'app.log')) ? readFileSync(join(dados, 'logs', 'app.log'), 'utf8').split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return {}; } }) : []);
-const arquivoSessao = (sessionId) => join(homedir(), '.claude', 'projects', 'C--Users-USUARIO-AppData-Roaming-StickyClaude-workspace', `${sessionId}.jsonl`);
+// O Claude Code guarda cada sessão em ~\.claude\projects\<pasta de trabalho com tudo que não é letra/número virando "-">\<id>.jsonl
+const pastaDasSessoes = join(homedir(), '.claude', 'projects', join(dados, 'workspace').replace(/[^A-Za-z0-9]/g, '-'));
+const arquivoSessao = (sessionId) => join(pastaDasSessoes, `${sessionId}.jsonl`);
 
 async function abrir() {
   const app = await electron.launch({ executablePath: exe, args: [], env: Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== 'ELECTRON_RUN_AS_NODE' && k !== 'STICKY_DATA_DIR')), timeout: 90_000 });
