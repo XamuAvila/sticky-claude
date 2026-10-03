@@ -180,6 +180,12 @@ dialog.dialogo label input, dialog.dialogo label select, dialog.dialogo label te
 .subtitulo { color: var(--suave); margin: 0 0 10px; }
 .mudancas { margin: 0 0 12px; padding-left: 20px; display: grid; gap: 6px; overflow-wrap: anywhere; }
 
+/* Post-its (lista) */
+.lista-postits { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.lista-postits li { display: grid; grid-template-columns: 14px 1fr auto; gap: 10px; align-items: center; }
+.ponto-cor { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.18); }
+.nome-postit { overflow-wrap: anywhere; font-weight: 600; }
+
 .abrindo { display: grid; place-items: center; height: 100%; color: var(--suave); }
 
 @media (prefers-reduced-motion: reduce) {

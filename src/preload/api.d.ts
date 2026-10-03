@@ -1,5 +1,6 @@
 import type { BriefingSnapshot } from '@shared/briefing';
 import type { Meta, MetaEntrada, MetaEntradaParcial, PropostaMetas, Retorno, SnapshotMetas } from '@shared/metas';
+import type { EventoPostit, ResumoPostit, VisaoPostit } from '@shared/postits';
 
 export interface StickyApi {
   briefing: {
@@ -20,6 +21,30 @@ export interface StickyApi {
     aplicarProposta(id: string): Promise<Retorno>;
     descartarProposta(id: string): Promise<void>;
     aoMudarPropostas(cb: (p: PropostaMetas[]) => void): () => void;
+  };
+  /** Janela de um post-it (cada janela só recebe os eventos do próprio post-it). */
+  postit: {
+    obter(id: string): Promise<VisaoPostit | null>;
+    /** Resolve quando o Claude termina de responder (ou falha). Os pedaços chegam por aoEvento. */
+    enviar(id: string, texto: string): Promise<Retorno>;
+    parar(id: string): Promise<void>;
+    renomear(id: string, nome: string): Promise<Retorno>;
+    cor(id: string, cor: string): Promise<Retorno>;
+    instrucoes(id: string, texto: string): Promise<Retorno>;
+    topo(id: string, valor: boolean): Promise<Retorno>;
+    acessoGoogle(id: string, valor: boolean): Promise<Retorno>;
+    /** O X: só oculta (volta pela bandeja). */
+    ocultar(id: string): Promise<void>;
+    /** Único jeito de apagar um post-it. */
+    excluir(id: string): Promise<Retorno>;
+    aoEvento(cb: (e: EventoPostit) => void): () => void;
+  };
+  /** Lista de post-its (painel). */
+  postits: {
+    listar(): Promise<ResumoPostit[]>;
+    novo(): Promise<Retorno<string>>;
+    alternar(id: string): Promise<void>;
+    aoMudar(cb: (l: ResumoPostit[]) => void): () => void;
   };
 }
 

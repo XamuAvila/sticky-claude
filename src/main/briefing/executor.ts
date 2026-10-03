@@ -17,7 +17,7 @@ export function servidoresVistos(): string[] {
   return lerJson(caminhos.servidores(), (u) => ServidoresSchema.parse(u))?.nomes ?? [];
 }
 
-function lembrarServidores(nomes: string[]): void {
+export function lembrarServidores(nomes: string[]): void {
   const atuais = new Set(servidoresVistos());
   const antes = atuais.size;
   nomes.forEach((n) => atuais.add(n));

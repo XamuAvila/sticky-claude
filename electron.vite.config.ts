@@ -14,6 +14,6 @@ export default defineConfig({
     root: resolve('src/renderer'),
     resolve: { alias: { '@shared': resolve('src/shared') } },
     plugins: [react()],
-    build: { rollupOptions: { input: { panel: resolve('src/renderer/panel.html') } } },
+    build: { rollupOptions: { input: { panel: resolve('src/renderer/panel.html'), postit: resolve('src/renderer/postit.html') } } },
   },
 });

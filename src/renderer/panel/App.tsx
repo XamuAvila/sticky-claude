@@ -4,6 +4,7 @@ import type { BriefingSnapshot } from '@shared/briefing';
 import { Agenda } from './Agenda';
 import { Emails } from './Emails';
 import { MetasCard } from './Metas';
+import { PostitsCard } from './PostitsCard';
 import { PropostaDialog } from './PropostaDialog';
 import { Secao } from './Secao';
 
@@ -83,6 +84,8 @@ export function App() {
           ) : <p className="vazio">Nenhuma prioridade urgente agora.</p>
         )}
       </Secao>
+
+      <PostitsCard />
 
       <PropostaDialog />
     </main>

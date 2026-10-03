@@ -13,7 +13,7 @@ O app **usa a sua assinatura do Claude** por meio do `claude.exe` (Claude Code) 
 | M0 Spike do Claude | Concluído (`spike/RESULTADOS.md`) |
 | M1 Bandeja + briefing | **Pronto** |
 | M2 Metas | **Pronto** |
-| M3 Post-its persistentes | Pendente |
+| M3 Post-its persistentes | **Pronto** |
 | M4 Inicialização automática + instalador | Pendente |
 | M5 Pílula no topo da tela | Pendente |
 
@@ -53,6 +53,24 @@ Formato do bloco que o Claude devolve:
 ```
 ````
 
+## Post-its (M3)
+
+Cada **post-it é uma janela pequena, sem moldura e redimensionável, com uma conversa própria e persistente com o Claude**. Na primeira execução o app já cria o post-it **Metas**.
+
+- **Nunca fecham.** O **X só oculta**; o post-it volta pela bandeja do sistema (cada um aparece no menu com uma caixa de marcação) ou pelo cartão "Post-its" do painel. Só **Excluir post-it** (menu **⋯** do próprio post-it, com confirmação) apaga: a janela, o estado e a cópia da conversa.
+- **A mesma conversa depois de reiniciar.** Cada post-it tem o **seu session id** (guardado em `postits.json`). A primeira mensagem usa `--session-id`; as seguintes, `--resume`. Nunca depende de "a última sessão da pasta". Depois de reiniciar o Windows, o post-it reabre **no mesmo lugar, no mesmo tamanho e no mesmo monitor** e continua a mesma sessão.
+- **Personalização.** Criar, **renomear** (clique no título), **cor** (6 opções, claro e escuro), **sempre no topo** (alfinete) e **instruções próprias** (menu ⋯). Editar as instruções vale já na mensagem seguinte.
+- **Acesso a e-mail e agenda por post-it**, desligado por padrão (menu ⋯). Quando ligado, é a mesma política de **somente leitura** do briefing. Desligado, o Claude daquele post-it não tem nenhuma ferramenta.
+- **Conversa em streaming**, com botão **Parar**. Uma resposta interrompida fica guardada como parcial.
+- **Metas pela conversa.** Qualquer post-it pode propor mudanças nas metas (bloco `metas-patch`); elas só valem depois do **Aplicar** no painel (veja "Metas").
+- **Se o histórico do Claude se perder** (ex.: limpeza automática de sessões antigas do Claude Code), o app percebe (`No conversation found…`), abre uma sessão nova **no mesmo post-it** e recomeça com um resumo da cópia local, avisando na conversa. Se a tentativa anterior chegou a criar a sessão (`already in use`), ele passa a retomá-la sozinho.
+- **Vários monitores e DPIs.** A posição é guardada com a tela de origem (id, tamanho e escala). Ao reabrir, procura a tela pela id, depois por tamanho e escala (o Windows às vezes troca as ids) e, se o monitor sumiu, usa a principal; em todos os casos a janela é puxada para dentro da área útil (nunca fica sob a barra de tarefas). Se o monitor voltar, os post-its voltam para ele. A correção de escala fracionária (150%) mantém o tamanho estável, sem crescer 1 px a cada reinício.
+- **Ctrl+Alt+B** esconde (ou devolve) o painel e todos os post-its de uma vez, sem marcar nenhum como "oculto".
+
+> **Limite honesto:** só há 1 monitor nesta máquina. A lógica de vários monitores e DPIs mistos é coberta por testes unitários com telas simuladas (`tests/postits-geometria.test.ts`), não por teste ao vivo.
+
+A cópia local da conversa fica em `%APPDATA%\StickyClaude\conversas\<id>.json` (até 300 mensagens). O contexto de verdade fica na sessão do Claude. Excluir um post-it não apaga a sessão do histórico do Claude Code; para isso use `claude purge`.
+
 ## Requisitos
 
 - Windows 11.
@@ -73,23 +91,29 @@ npx electron .                           # ou: npm run dev
 ## Testes
 
 ```powershell
-npm test                  # 133 testes unitários (parser, agenda, metas, política de ferramentas, serviço, rede, armazenamento)
+npm test                  # 195 testes unitários (parser, agenda, metas, post-its, geometria, política de ferramentas, serviços, rede, armazenamento)
 npm run typecheck
-npm run build; npm run test:e2e   # 8 testes E2E no app real (cliques e digitação), com dados temporários e sem gastar assinatura
+npm run build; npm run test:e2e   # 18 testes E2E no app real (cliques, digitação, reinício do app), com dados temporários e sem gastar assinatura
 ```
 
-Teste de integração **real**, que consome a assinatura (3 chamadas ao Claude, imprime só contagens):
+Testes de integração **reais**, que consomem a assinatura (imprimem só contagens e resultados):
 
 ```powershell
-$env:STICKY_LIVE = '1'; npx vitest run tests/integracao.live.test.ts; Remove-Item Env:STICKY_LIVE
+$env:STICKY_LIVE = '1'
+npx vitest run tests/integracao.live.test.ts   # briefing completo: Agenda, E-mails e Foco (3 chamadas)
+npx vitest run tests/postit.live.test.ts       # post-its: mesma sessão após "reiniciar", instruções, streaming e proposta de metas (4 chamadas)
+Remove-Item Env:STICKY_LIVE
 ```
 
 Verificações no app real **sem gastar assinatura** (executor falso, dados sintéticos, pasta temporária):
 
 ```powershell
-.\scripts\verificar-interacao.ps1   # bandeja, atalho Ctrl+Alt+B, "X só oculta", instância única
-.\scripts\capturar-estados.ps1      # capturas: tema claro/escuro, sem internet, aguardando rede, metas, editor e proposta
+.\scripts\verificar-interacao.ps1   # bandeja, atalho Ctrl+Alt+B (painel e post-its), "X só oculta", instância única
+.\scripts\capturar-estados.ps1      # capturas do painel: tema claro/escuro, sem internet, aguardando rede, metas, editor e proposta
+node scripts/capturar-postits.mjs   # capturas das janelas dos post-its: conversa, menu, instruções, cores
 ```
+
+Com `STICKY_DATA_DIR` definido (testes e verificações), o app também isola a pasta interna do Electron (`<dados>\electron`), então nunca esbarra no seu Sticky Claude de verdade.
 
 ## Segurança e privacidade
 
@@ -101,13 +125,14 @@ Verificações no app real **sem gastar assinatura** (executor falso, dados sint
 - **Limite honesto:** os conectores no claude.ai podem ter escopos de escrita já concedidos ao Google. O app não consegue reduzi-los. A proteção é a política acima.
 - **E-mails e convites são dados, não instruções.** O Claude é instruído a ignorar ordens dentro deles, e qualquer tentativa vai para o aviso "Conteúdo suspeito".
 - **Sem chave de API.** O app remove `ANTHROPIC_API_KEY` e `ANTHROPIC_AUTH_TOKEN` do ambiente do `claude.exe`.
-- **Sem transcrição.** O briefing usa `--no-session-persistence`, então o conteúdo dos e-mails não é gravado em `~/.claude/projects`.
+- **Sem transcrição no briefing.** O briefing usa `--no-session-persistence`, então o conteúdo dos e-mails não é gravado em `~/.claude/projects`. (Os post-its **precisam** da sessão gravada para retomar a conversa; o log do app, mesmo assim, nunca recebe texto de conversa.)
+- **Nenhum `claude.exe` órfão.** Ao sair do app, os processos do Claude em andamento são encerrados.
 - **Sem telemetria do app.** A única atividade de rede do app é uma consulta de DNS para saber se a internet voltou. Os dados ficam em `%APPDATA%\StickyClaude\`. O log (`logs\app.log`) tem só metadados (fonte, tempo, tokens) e descarta texto longo.
 - **Sem admin** e nenhuma alteração de configuração do sistema.
 
 ## Onde ficam os dados
 
-`%APPDATA%\StickyClaude\`: `briefing.json` (cache), `metas.json` (suas metas), `backups\` (cópias das metas), `servidores.json` (conectores já vistos), `config.json` (opcional: `claudePath`, `metasParadaDias`), `logs\`, `workspace\` (pasta de trabalho do Claude).
+`%APPDATA%\StickyClaude\`: `briefing.json` (cache), `metas.json` (suas metas), `backups\` (cópias das metas), `postits.json` (post-its: sessão, cor, instruções, posição e monitor), `conversas\` (cópia local do texto de cada conversa), `servidores.json` (conectores já vistos), `config.json` (opcional: `claudePath`, `metasParadaDias`, `modeloPostits`, `esforcoPostits`), `logs\`, `workspace\` (pasta de trabalho do Claude: as sessões dos post-its são indexadas por ela).
 
 ## Desinstalar
 
@@ -116,9 +141,10 @@ No M1 não há instalação: basta fechar o app (menu da bandeja → **Sair**) e
 ## Estrutura
 
 ```
-src/main/        processo principal: bandeja, atalho, janelas, briefing (parser, serviço, executor), metas (armazenamento, propostas), política do Claude
-src/preload/     ponte segura entre o processo principal e a tela
-src/renderer/    tela do painel (React)
+src/main/        processo principal: bandeja, atalho, janelas, briefing (parser, serviço, executor), metas (armazenamento, propostas),
+                 post-its (estado, geometria, janelas, conversa, executor), política do Claude
+src/preload/     ponte segura entre o processo principal e as telas
+src/renderer/    telas (React): painel e post-it
 src/shared/      tipos e a lógica da agenda, usados pelos dois lados
 tests/           testes unitários + integração real opcional
 scripts/         ícones e verificações no app real

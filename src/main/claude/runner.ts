@@ -11,6 +11,10 @@ export interface PedidoClaude {
   claudePath: string;
   /** Conector que a fonte exige (só para mensagens de erro melhores). */
   servidorExigido?: string;
+  /** Recebe cada evento do stream (ex.: pedaços de texto da resposta). */
+  aoEvento?: (ev: EventoStream) => void;
+  /** Interrompe a execução (botão "Parar"). */
+  sinal?: AbortSignal;
 }
 
 export interface UsoTokens {
@@ -36,7 +40,7 @@ export interface ResultadoClaude {
   tentativasIgnoradas?: string[];
 }
 
-interface EventoStream {
+export interface EventoStream {
   type?: string;
   subtype?: string;
   [k: string]: unknown;
@@ -60,6 +64,14 @@ export function ferramentasDoEvento(ev: EventoStream): string[] {
   return (msg?.content ?? []).filter((b) => b.type === 'tool_use' && typeof b.name === 'string').map((b) => b.name as string);
 }
 
+/** claude.exe em execução agora (para não deixar nenhum órfão quando o app sai). */
+const ativos = new Set<number>();
+
+export function matarTodosOsFilhos(): void {
+  for (const pid of ativos) matarArvore(pid);
+  ativos.clear();
+}
+
 function matarArvore(pid: number | undefined): void {
   if (!pid) return;
   try {
@@ -78,7 +90,7 @@ export function executarClaude(p: PedidoClaude): Promise<ResultadoClaude> {
       violacao: undefined as string | undefined,
       servidores: [] as Array<{ name: string; status: string }>,
       resultado: undefined as EventoStream | undefined, sessionId: undefined as string | undefined,
-      existentes: null as Set<string> | null, ignoradas: [] as string[],
+      existentes: null as Set<string> | null, ignoradas: [] as string[], cancelado: false,
     };
 
     let filho: ReturnType<typeof spawn>;
@@ -90,12 +102,18 @@ export function executarClaude(p: PedidoClaude): Promise<ResultadoClaude> {
       return;
     }
 
+    if (filho.pid) ativos.add(filho.pid);
     const timer = setTimeout(() => {
       estado.timedOut = true;
       matarArvore(filho.pid);
     }, p.timeoutMs);
 
+    const cancelar = () => { estado.cancelado = true; matarArvore(filho.pid); };
+    if (p.sinal?.aborted) cancelar();
+    else p.sinal?.addEventListener('abort', cancelar, { once: true });
+
     const tratar = (ev: EventoStream) => {
+      try { p.aoEvento?.(ev); } catch { /* um ouvinte com defeito não derruba a execução */ }
       if (typeof ev.session_id === 'string') estado.sessionId = ev.session_id;
       if (ev.type === 'system' && ev.subtype === 'init') {
         const mcp = (ev.mcp_servers as Array<{ name: string; status: string }> | undefined) ?? [];
@@ -129,6 +147,7 @@ export function executarClaude(p: PedidoClaude): Promise<ResultadoClaude> {
 
     filho.on('close', () => {
       clearTimeout(timer);
+      if (filho.pid) ativos.delete(filho.pid);
       const ultima = lerLinhaStream(estado.buf);
       if (ultima) tratar(ultima);
 
@@ -144,11 +163,13 @@ export function executarClaude(p: PedidoClaude): Promise<ResultadoClaude> {
         ...(typeof r?.num_turns === 'number' ? { turnos: r.num_turns } : {}),
       };
 
-      const falhou = !r || r.is_error === true || estado.timedOut || !!estado.violacao || !!estado.spawnErro;
+      p.sinal?.removeEventListener('abort', cancelar);
+      const falhou = !r || r.is_error === true || estado.timedOut || estado.cancelado || !!estado.violacao || !!estado.spawnErro;
       if (falhou) {
         const erro = classificarErro({
           ...(estado.spawnErro ? { spawnErro: estado.spawnErro } : {}),
           timedOut: estado.timedOut,
+          cancelado: estado.cancelado,
           ...(estado.violacao ? { violacao: estado.violacao } : {}),
           stderr: estado.stderr,
           ...(typeof r?.result === 'string' ? { textoErro: r.result } : {}),

@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { BriefingSnapshot } from '@shared/briefing';
 import type { Meta, PropostaMetas, Retorno, SnapshotMetas } from '@shared/metas';
+import type { EventoPostit, ResumoPostit, VisaoPostit } from '@shared/postits';
 import type { StickyApi } from './api';
 
 /** Assina um canal do processo principal; devolve a função que cancela. */
@@ -10,23 +11,44 @@ function assinar<T>(canal: string, cb: (v: T) => void): () => void {
   return () => { ipcRenderer.removeListener(canal, h); };
 }
 
+const chamar = <T>(canal: string, ...args: unknown[]) => ipcRenderer.invoke(canal, ...args) as Promise<T>;
+
 const api: StickyApi = {
   briefing: {
-    obter: () => ipcRenderer.invoke('briefing:obter') as Promise<BriefingSnapshot>,
-    atualizar: () => ipcRenderer.invoke('briefing:atualizar') as Promise<void>,
+    obter: () => chamar<BriefingSnapshot>('briefing:obter'),
+    atualizar: () => chamar<void>('briefing:atualizar'),
     aoMudar: (cb) => assinar('briefing:mudou', cb),
   },
   metas: {
-    obter: () => ipcRenderer.invoke('metas:obter') as Promise<SnapshotMetas>,
-    criar: (entrada) => ipcRenderer.invoke('metas:criar', entrada) as Promise<Retorno<Meta>>,
-    atualizar: (id, campos) => ipcRenderer.invoke('metas:atualizar', id, campos) as Promise<Retorno<Meta>>,
-    excluir: (id) => ipcRenderer.invoke('metas:excluir', id) as Promise<Retorno>,
-    registrarAvanco: (id, nota) => ipcRenderer.invoke('metas:avanco', id, nota) as Promise<Retorno<Meta>>,
+    obter: () => chamar<SnapshotMetas>('metas:obter'),
+    criar: (entrada) => chamar<Retorno<Meta>>('metas:criar', entrada),
+    atualizar: (id, campos) => chamar<Retorno<Meta>>('metas:atualizar', id, campos),
+    excluir: (id) => chamar<Retorno>('metas:excluir', id),
+    registrarAvanco: (id, nota) => chamar<Retorno<Meta>>('metas:avanco', id, nota),
     aoMudar: (cb) => assinar('metas:mudou', cb),
-    propostas: () => ipcRenderer.invoke('metas:propostas') as Promise<PropostaMetas[]>,
-    aplicarProposta: (id) => ipcRenderer.invoke('metas:aplicar-proposta', id) as Promise<Retorno>,
-    descartarProposta: (id) => ipcRenderer.invoke('metas:descartar-proposta', id) as Promise<void>,
+    propostas: () => chamar<PropostaMetas[]>('metas:propostas'),
+    aplicarProposta: (id) => chamar<Retorno>('metas:aplicar-proposta', id),
+    descartarProposta: (id) => chamar<void>('metas:descartar-proposta', id),
     aoMudarPropostas: (cb) => assinar('metas:propostas-mudou', cb),
+  },
+  postit: {
+    obter: (id) => chamar<VisaoPostit | null>('postit:obter', id),
+    enviar: (id, texto) => chamar<Retorno>('postit:enviar', id, texto),
+    parar: (id) => chamar<void>('postit:parar', id),
+    renomear: (id, nome) => chamar<Retorno>('postit:renomear', id, nome),
+    cor: (id, cor) => chamar<Retorno>('postit:cor', id, cor),
+    instrucoes: (id, texto) => chamar<Retorno>('postit:instrucoes', id, texto),
+    topo: (id, valor) => chamar<Retorno>('postit:topo', id, valor),
+    acessoGoogle: (id, valor) => chamar<Retorno>('postit:acesso-google', id, valor),
+    ocultar: (id) => chamar<void>('postit:ocultar', id),
+    excluir: (id) => chamar<Retorno>('postit:excluir', id),
+    aoEvento: (cb) => assinar<EventoPostit>('postit:evento', cb),
+  },
+  postits: {
+    listar: () => chamar<ResumoPostit[]>('postits:listar'),
+    novo: () => chamar<Retorno<string>>('postits:novo'),
+    alternar: (id) => chamar<void>('postits:alternar', id),
+    aoMudar: (cb) => assinar<ResumoPostit[]>('postits:mudou', cb),
   },
 };
 

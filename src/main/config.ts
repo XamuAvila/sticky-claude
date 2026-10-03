@@ -8,6 +8,9 @@ const ConfigSchema = z.object({
   claudePath: z.string().min(1).optional(),
   /** Dias sem avanço para uma meta ativa ser avisada como parada (padrão 7). */
   metasParadaDias: z.number().int().min(1).max(365).optional(),
+  /** Modelo e esforço das conversas dos post-its (padrão: sonnet, medium). O briefing usa sempre esforço baixo. */
+  modeloPostits: z.string().min(1).optional(),
+  esforcoPostits: z.enum(['low', 'medium', 'high']).optional(),
 });
 export type Config = z.infer<typeof ConfigSchema>;
 
