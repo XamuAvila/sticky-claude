@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { readFileSync } from 'node:fs';
+import { lerConfig } from '../config';
 import { montarArgs, permitidasDoPerfil } from '../claude/policy';
 import { acharClaude } from '../claude/locate';
 import { executarClaude } from '../claude/runner';
@@ -30,19 +30,10 @@ const CONFIG = {
   foco: { perfil: 'semFerramentas' as const, schema: SCHEMAS.foco, timeoutMs: 90_000, servidor: undefined },
 };
 
-export function lerClaudePathConfigurado(): string | undefined {
-  try {
-    const c = JSON.parse(readFileSync(caminhos.config(), 'utf8')) as { claudePath?: unknown };
-    return typeof c.claudePath === 'string' ? c.claudePath : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 export function criarExecutor(log: Logger) {
   return async (fonte: FonteNome, prompt: string): Promise<SaidaFonte> => {
     const cfg = CONFIG[fonte];
-    const claudePath = acharClaude(lerClaudePathConfigurado());
+    const claudePath = acharClaude(lerConfig().claudePath);
     if (!claudePath) {
       log.erro('claude.exe não encontrado', { fonte });
       return { ok: false, erro: 'Não encontrei o Claude Code (claude.exe). Instale-o ou informe o caminho nas configurações.' };

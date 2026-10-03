@@ -2,6 +2,7 @@ import {
   BriefingSchema, briefingVazio,
   type AgendaDados, type Briefing, type BriefingSnapshot, type EmailsDados, type FocoDados, type Rede, type SecaoNome,
 } from '@shared/briefing';
+import { analisarMetas, type Meta } from '@shared/metas';
 import type { Logger } from '../log';
 import { brutoDaSaida, parseAgenda, parseEmails, parseFoco, type Resultado } from './parser';
 import { entradaFoco, promptAgenda, promptEmails, promptFoco } from './prompts';
@@ -19,12 +20,16 @@ export interface Dependencias {
   tz: string;
   salvar: (b: Briefing) => void;
   log: Logger;
+  /** Metas atuais (locais, sem custo): entram na escolha do foco. */
+  metas: () => Meta[];
+  /** Dias sem avanço para uma meta ativa contar como parada. */
+  diasParada?: () => number;
 }
 
 /** Valida o cache do disco; 'carregando' (queda no meio de uma execução) vira ok/vazio conforme haja dados. */
 export function briefingDoCache(u: unknown): Briefing {
   const b = BriefingSchema.parse(u);
-  for (const nome of ['agenda', 'emails', 'metas', 'foco'] as const) {
+  for (const nome of ['agenda', 'emails', 'foco'] as const) {
     const s = b[nome];
     if (s.status === 'carregando') s.status = s.dados ? 'ok' : 'vazio';
   }
@@ -142,8 +147,9 @@ export class BriefingService {
   private async focar(): Promise<void> {
     const agenda = this.briefing.agenda.dados as AgendaDados | undefined;
     const emails = this.briefing.emails.dados as EmailsDados | undefined;
-    if (!agenda && !emails) return this.erro('foco', 'Sem dados de agenda ou e-mails para sugerir o foco.');
-    const prompt = promptFoco(entradaFoco(agenda, emails, this.deps.agora()));
+    const metas = analisarMetas(this.deps.metas(), this.deps.agora(), this.deps.diasParada?.()).filter((m) => m.status === 'ativa');
+    if (!agenda && !emails && metas.length === 0) return this.erro('foco', 'Sem dados de agenda, e-mails ou metas para sugerir o foco.');
+    const prompt = promptFoco(entradaFoco(agenda, emails, metas, this.deps.agora()));
     await this.fonte<FocoDados>('foco', prompt, parseFoco, (d) => this.ok('foco', d));
   }
 }

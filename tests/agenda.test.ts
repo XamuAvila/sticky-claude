@@ -17,6 +17,13 @@ describe('lerData', () => {
   it('data inválida vira null', () => {
     expect(lerData('amanhã')).toBeNull();
   });
+  it('dia que não existe no calendário vira null (31/02 não "rola" para março)', () => {
+    expect(lerData('2026-02-31')).toBeNull();
+    expect(lerData('2026-13-01')).toBeNull();
+    expect(lerData('2026-02-28')).not.toBeNull();
+    expect(lerData('2028-02-29')).not.toBeNull(); // ano bissexto
+    expect(lerData('2026-02-29')).toBeNull();
+  });
 });
 
 describe('analisarAgenda', () => {

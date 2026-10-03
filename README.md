@@ -12,7 +12,7 @@ O app **usa a sua assinatura do Claude** por meio do `claude.exe` (Claude Code) 
 |---|---|
 | M0 Spike do Claude | Concluído (`spike/RESULTADOS.md`) |
 | M1 Bandeja + briefing | **Pronto** |
-| M2 Metas | Pendente |
+| M2 Metas | **Pronto** |
 | M3 Post-its persistentes | Pendente |
 | M4 Inicialização automática + instalador | Pendente |
 | M5 Pílula no topo da tela | Pendente |
@@ -25,12 +25,33 @@ O app **usa a sua assinatura do Claude** por meio do `claude.exe` (Claude Code) 
 - Painel com quatro cartões, cada um com estado próprio (carregando, ok ou erro). Se o Gmail falhar, o resto aparece:
   - **Hoje**: agenda de hoje, com conflitos, o que começa nas próximas horas, e Amanhã e Depois de amanhã recolhidos.
   - **E-mails que pedem ação**: remetente, assunto e o que fazer (sem newsletters). Conteúdo que tenta dar ordens ao Claude aparece num aviso, e o app não obedece.
-  - **Metas**: chega no M2.
-  - **Foco sugerido**: no máximo 3 prioridades.
+  - **Metas**: status, dias restantes, próximo passo, por quê e último avanço (veja "Metas" abaixo).
+  - **Foco sugerido**: no máximo 3 prioridades; as metas ativas entram na escolha.
 - O último briefing fica em cache. O app abre na hora e mostra "atualizado há X min".
 - O briefing automático roda **só ao iniciar o app** e quando você clica em **Atualizar**, nunca em loop. Se o cache tem menos de 20 minutos e está completo, o início só mostra o cache.
 - No início, espera a rede subir por até ~2 minutos. Sem internet, mostra um estado claro e mantém o último briefing.
 - Tema claro e escuro seguem o Windows.
+
+## Metas (M2)
+
+As metas ficam em `%APPDATA%\StickyClaude\metas.json`. Cada uma tem **nome, status** (ativa, pausada, concluída ou abandonada), **prazo, por quê, próximo passo** e **último avanço**.
+
+- Edite pelo painel (**+ Nova meta**, **Editar**, **Registrar avanço**) ou direto no arquivo: o painel acompanha as mudanças sem reiniciar.
+- O painel mostra os dias restantes e avisa quando uma meta ativa está **atrasada** ou **parada** (sem avanço há 7 dias ou mais; ajuste com `metasParadaDias` em `config.json`). Esse cálculo é local e não gasta assinatura.
+- A escrita é atômica, com backup datado antes de excluir ou de aplicar uma proposta do Claude (os 10 mais recentes ficam em `%APPDATA%\StickyClaude\backups\`). Se o arquivo ficar ilegível, o app guarda uma cópia (`metas.json.corrompido-…`) e recomeça vazio, nunca descarta o seu conteúdo.
+- **Alterar metas por conversa com o Claude, sem dar a ele poder de escrita.** O Claude responde com um bloco `metas-patch` (JSON). O app valida, mostra **o que vai mudar** e só aplica depois do seu **Aplicar** (o foco inicial fica em **Descartar**). Só existem 3 operações: criar, atualizar campos e registrar avanço. Excluir só pela tela. Uma instrução maliciosa dentro de um e-mail não consegue alterar as suas metas em silêncio. A conversa em si chega com os post-its (M3); a fila de propostas e o diálogo já estão prontos e testados.
+
+Formato do bloco que o Claude devolve:
+
+````
+```metas-patch
+{ "operacoes": [
+  { "op": "atualizar", "id": "<id da meta>", "campos": { "prazo": "2026-12-15", "proximoPasso": "Ler 10 páginas" } },
+  { "op": "avanco", "id": "<id da meta>", "nota": "Terminei o capítulo 2" },
+  { "op": "criar", "meta": { "nome": "Correr 5 km", "status": "ativa", "prazo": "2026-11-30" } }
+] }
+```
+````
 
 ## Requisitos
 
@@ -52,8 +73,9 @@ npx electron .                           # ou: npm run dev
 ## Testes
 
 ```powershell
-npm test                  # 96 testes unitários (parser, agenda, política de ferramentas, serviço, rede, armazenamento)
+npm test                  # 133 testes unitários (parser, agenda, metas, política de ferramentas, serviço, rede, armazenamento)
 npm run typecheck
+npm run build; npm run test:e2e   # 8 testes E2E no app real (cliques e digitação), com dados temporários e sem gastar assinatura
 ```
 
 Teste de integração **real**, que consome a assinatura (3 chamadas ao Claude, imprime só contagens):
@@ -66,7 +88,7 @@ Verificações no app real **sem gastar assinatura** (executor falso, dados sint
 
 ```powershell
 .\scripts\verificar-interacao.ps1   # bandeja, atalho Ctrl+Alt+B, "X só oculta", instância única
-.\scripts\capturar-estados.ps1      # capturas: tema claro/escuro, sem internet, aguardando rede
+.\scripts\capturar-estados.ps1      # capturas: tema claro/escuro, sem internet, aguardando rede, metas, editor e proposta
 ```
 
 ## Segurança e privacidade
@@ -85,7 +107,7 @@ Verificações no app real **sem gastar assinatura** (executor falso, dados sint
 
 ## Onde ficam os dados
 
-`%APPDATA%\StickyClaude\`: `briefing.json` (cache), `servidores.json` (conectores já vistos), `config.json` (opcional), `logs\`, `workspace\` (pasta de trabalho do Claude).
+`%APPDATA%\StickyClaude\`: `briefing.json` (cache), `metas.json` (suas metas), `backups\` (cópias das metas), `servidores.json` (conectores já vistos), `config.json` (opcional: `claudePath`, `metasParadaDias`), `logs\`, `workspace\` (pasta de trabalho do Claude).
 
 ## Desinstalar
 
@@ -94,7 +116,7 @@ No M1 não há instalação: basta fechar o app (menu da bandeja → **Sair**) e
 ## Estrutura
 
 ```
-src/main/        processo principal: bandeja, atalho, janelas, briefing (parser, serviço, executor), política do Claude
+src/main/        processo principal: bandeja, atalho, janelas, briefing (parser, serviço, executor), metas (armazenamento, propostas), política do Claude
 src/preload/     ponte segura entre o processo principal e a tela
 src/renderer/    tela do painel (React)
 src/shared/      tipos e a lógica da agenda, usados pelos dois lados

@@ -34,7 +34,13 @@ function inicioDoDia(d: Date): Date {
 /** "AAAA-MM-DD" vira meia-noite LOCAL (new Date('2026-10-02') seria UTC e erraria o dia). */
 export function lerData(s: string): Date | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.trim());
-  const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);
+  if (m) {
+    const [ano, mes, dia] = [Number(m[1]), Number(m[2]), Number(m[3])];
+    const d = new Date(ano, mes - 1, dia);
+    // o JavaScript "rola" datas impossíveis (31/02 vira 03/03): só vale se o dia continuou o mesmo
+    return d.getFullYear() === ano && d.getMonth() === mes - 1 && d.getDate() === dia ? d : null;
+  }
+  const d = new Date(s);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 

@@ -11,6 +11,8 @@ export const caminhos = {
   briefing: () => join(dadosDir(), 'briefing.json'),
   servidores: () => join(dadosDir(), 'servidores.json'),
   config: () => join(dadosDir(), 'config.json'),
+  metas: () => join(dadosDir(), 'metas.json'),
+  backups: () => join(dadosDir(), 'backups'),
   logs: () => join(dadosDir(), 'logs'),
   /** cwd fixo das execuções do Claude: as sessões são indexadas por cwd. */
   workspace: () => join(dadosDir(), 'workspace'),

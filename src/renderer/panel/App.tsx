@@ -3,6 +3,8 @@ import { haQuanto } from '@shared/agenda';
 import type { BriefingSnapshot } from '@shared/briefing';
 import { Agenda } from './Agenda';
 import { Emails } from './Emails';
+import { MetasCard } from './Metas';
+import { PropostaDialog } from './PropostaDialog';
 import { Secao } from './Secao';
 
 function useAgora(ms: number): Date {
@@ -65,7 +67,7 @@ export function App() {
         {b.emails.dados && <Emails dados={b.emails.dados} />}
       </Secao>
 
-      <Secao titulo="Metas" status="vazio" temDados={false} agora={agora} vazioTexto="As metas ainda não estão disponíveis nesta versão." />
+      <MetasCard agora={agora} />
 
       <Secao titulo="Foco sugerido" status={b.foco.status} erro={b.foco.erro} atualizadoEm={b.foco.atualizadoEm}
         temDados={!!b.foco.dados} agora={agora} vazioTexto="O foco aparece aqui depois da primeira atualização.">
@@ -81,6 +83,8 @@ export function App() {
           ) : <p className="vazio">Nenhuma prioridade urgente agora.</p>
         )}
       </Secao>
+
+      <PropostaDialog />
     </main>
   );
 }

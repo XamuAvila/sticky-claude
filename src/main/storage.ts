@@ -5,7 +5,8 @@ import { dirname } from 'node:path';
 export function lerJson<T>(arquivo: string, validar: (u: unknown) => T): T | null {
   try {
     if (!existsSync(arquivo)) return null;
-    return validar(JSON.parse(readFileSync(arquivo, 'utf8')));
+    // tira o BOM que o Bloco de Notas e o PowerShell 5.1 gravam (JSON.parse não o aceita)
+    return validar(JSON.parse(readFileSync(arquivo, 'utf8').replace(/^﻿/, '')));
   } catch {
     return null;
   }

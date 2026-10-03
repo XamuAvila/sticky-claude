@@ -136,6 +136,50 @@ details.outros summary:focus-visible { outline: 2px solid var(--texto); outline-
 .foco .t { font-weight: 600; overflow-wrap: anywhere; }
 .foco .p { color: var(--suave); }
 
+/* Metas */
+.metas { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.meta { padding-bottom: 14px; border-bottom: 1px solid var(--borda); }
+.meta:last-child { border-bottom: 0; padding-bottom: 0; }
+.meta.pausada, .meta.concluida, .meta.abandonada { opacity: 0.75; }
+.meta-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.meta-nome { overflow-wrap: anywhere; font-size: 15px; }
+.status { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; white-space: nowrap; background: var(--esqueleto); color: var(--suave); }
+.status.ativa { background: var(--aviso-bg); color: var(--destaque-texto); }
+.status.concluida { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.meta-info { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--suave); font-size: 13px; margin: 2px 0 6px; }
+.meta-info .atrasada { color: var(--perigo); font-weight: 600; }
+.meta-info .urgente { color: var(--destaque-texto); font-weight: 600; }
+.meta-info .parada { color: var(--destaque-texto); font-weight: 600; }
+.proximo { margin: 4px 0; }
+.proximo .rotulo { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--suave); margin-right: 6px; }
+.porque, .avanco { color: var(--suave); font-size: 13px; margin-top: 2px; overflow-wrap: anywhere; }
+.meta-acoes { display: flex; gap: 14px; margin-top: 6px; }
+.resumo-metas { margin: 0 0 12px; padding: 8px 10px; border-radius: 8px; background: var(--aviso-bg); color: var(--destaque-texto); font-weight: 600; }
+.avanco-form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
+.avanco-form input { flex: 1 1 180px; }
+
+/* Botões e campos */
+button.secundario { appearance: none; border: 1px solid var(--borda); background: transparent; color: var(--texto); font: inherit; font-weight: 600; padding: 7px 14px; border-radius: 8px; cursor: pointer; }
+button.secundario:hover { background: var(--esqueleto); }
+button.perigo { appearance: none; border: 1px solid transparent; background: transparent; color: var(--perigo); font: inherit; font-weight: 600; padding: 7px 10px; border-radius: 8px; cursor: pointer; }
+button.perigo.confirmando { background: var(--perigo-bg); border-color: var(--perigo); }
+button.pequeno { padding: 4px 10px; font-size: 13px; }
+button:focus-visible { outline: 2px solid var(--texto); outline-offset: 2px; }
+input, select, textarea { font: inherit; color: var(--texto); background: var(--bg); border: 1px solid var(--borda); border-radius: 8px; padding: 7px 10px; width: 100%; }
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--destaque); outline-offset: 1px; }
+
+/* Diálogos */
+dialog.dialogo { border: 1px solid var(--borda); border-radius: 14px; background: var(--card); color: var(--texto); padding: 18px 20px; width: min(440px, calc(100vw - 32px)); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35); }
+dialog.dialogo::backdrop { background: rgba(0, 0, 0, 0.45); }
+dialog.dialogo h2 { margin: 0 0 10px; font-size: 18px; letter-spacing: -0.01em; text-transform: none; color: var(--texto); }
+dialog.dialogo label { display: grid; gap: 4px; font-weight: 600; font-size: 13px; margin-bottom: 12px; }
+dialog.dialogo label input, dialog.dialogo label select, dialog.dialogo label textarea { font-weight: 400; font-size: 14px; }
+.duas-colunas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.dialogo-acoes { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.espaco { flex: 1; }
+.subtitulo { color: var(--suave); margin: 0 0 10px; }
+.mudancas { margin: 0 0 12px; padding-left: 20px; display: grid; gap: 6px; overflow-wrap: anywhere; }
+
 .abrindo { display: grid; place-items: center; height: 100%; color: var(--suave); }
 
 @media (prefers-reduced-motion: reduce) {

@@ -25,6 +25,7 @@ function criar(respostas: Partial<Record<FonteNome, SaidaFonte | (() => SaidaFon
     tz: 'America/Sao_Paulo',
     salvar: (b) => salvos.push(structuredClone(b)),
     log: logger,
+    metas: () => [],
     ...opcoes,
   };
   return { svc: new BriefingService(deps, inicial), chamadas, salvos };

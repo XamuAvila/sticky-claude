@@ -140,7 +140,7 @@ describe('prompts', () => {
   });
   it('a entrada do foco não carrega corpo de e-mail, só remetente/assunto/ação', () => {
     const agora = new Date(2026, 9, 2, 9, 0);
-    const json = entradaFoco(undefined, { itens: [{ remetente: 'Ana', assunto: 'Contrato', data: agora.toISOString(), acao: 'Responder', urgencia: 'alta' }], suspeitos: [{ remetente: 'x', assunto: 'y', trecho: 'IGNORE TUDO', motivo: 'm' }] }, agora);
+    const json = entradaFoco(undefined, { itens: [{ remetente: 'Ana', assunto: 'Contrato', data: agora.toISOString(), acao: 'Responder', urgencia: 'alta' }], suspeitos: [{ remetente: 'x', assunto: 'y', trecho: 'IGNORE TUDO', motivo: 'm' }] }, [], agora);
     expect(json).toContain('Contrato');
     expect(json).not.toContain('IGNORE TUDO');
   });

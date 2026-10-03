@@ -1,13 +1,19 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, nativeTheme, Tray } from 'electron';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { release, uptime } from 'node:os';
 import { join } from 'node:path';
 import { briefingVazio } from '@shared/briefing';
+import { DIAS_PARADA_PADRAO } from '@shared/metas';
 import { criarExecutor } from './briefing/executor';
 import { executorFalso } from './briefing/falso';
 import { deveRodarNoInicio } from './briefing/schedule';
 import { BriefingService, briefingDoCache, type Gatilho } from './briefing/service';
+import { lerConfig } from './config';
+import { prepararCapturas } from './dev-capturas';
 import { criarLogger, type Logger } from './log';
+import { registrarIpcMetas } from './metas/ipc';
+import { Propostas } from './metas/propostas';
+import { MetasStore } from './metas/store';
 import { aguardarRede, temRede } from './network';
 import { caminhos, garantirPastas } from './paths';
 import { gravarJsonAtomico, lerJson } from './storage';
@@ -41,6 +47,10 @@ function iniciar(): void {
   void app.whenReady().then(aoFicarPronto);
 }
 
+function enviarAoPainel(canal: string, valor: unknown): void {
+  if (painel && !painel.isDestroyed()) painel.webContents.send(canal, valor);
+}
+
 function aoFicarPronto(): void {
   garantirPastas();
   const log = criarLogger(caminhos.logs());
@@ -49,6 +59,13 @@ function aoFicarPronto(): void {
     versao: app.getVersion(), autostart, windows: release(), segundosDesdeBoot: Math.round(uptime()),
     empacotado: app.isPackaged,
   });
+
+  // Metas locais + propostas do Claude (que só valem depois do "Aplicar" do usuário).
+  const metas = new MetasStore({ arquivo: caminhos.metas(), backupsDir: caminhos.backups(), agora: () => new Date(), novoId: randomUUID, log });
+  const propostas = new Propostas(metas, randomUUID, () => new Date());
+  metas.observar();
+  registrarIpcMetas({ ipc: ipcMain, store: metas, propostas, enviar: enviarAoPainel, aoChegarProposta: mostrarPainel, log });
+  log.info('metas carregadas', { total: metas.snapshot().metas.length, aviso: !!metas.snapshot().aviso });
 
   const cache = lerJson(caminhos.briefing(), briefingDoCache);
   // Só desenvolvimento: simula a falta de internet (e encurta a espera de 2 min para 6 s) para ver os estados da tela.
@@ -69,6 +86,8 @@ function aoFicarPronto(): void {
       tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
       salvar: (b) => gravarJsonAtomico(caminhos.briefing(), b),
       log,
+      metas: () => metas.snapshot().metas,
+      diasParada: () => lerConfig().metasParadaDias ?? DIAS_PARADA_PADRAO,
     },
     cache ?? briefingVazio(),
   );
@@ -77,9 +96,7 @@ function aoFicarPronto(): void {
 
   ipcMain.handle('briefing:obter', () => servico.snapshot());
   ipcMain.handle('briefing:atualizar', () => atualizar('manual'));
-  servico.aoMudar((s) => {
-    if (painel && !painel.isDestroyed()) painel.webContents.send('briefing:mudou', s);
-  });
+  servico.aoMudar((s) => enviarAoPainel('briefing:mudou', s));
 
   criarPainel();
   criarBandeja(() => atualizar('manual'));
@@ -88,11 +105,10 @@ function aoFicarPronto(): void {
   log.info('interface pronta', { bandeja: !!bandeja && !bandeja.isDestroyed(), atalhoRegistrado: atalhoOk && globalShortcut.isRegistered(ATALHO) });
 
   // Briefing automático: só no início do app (login), e só se o cache não estiver fresco. Nunca em loop.
-  const inicial = servico.snapshot().briefing;
-  if (deveRodarNoInicio(inicial, new Date())) atualizar('inicio');
+  if (deveRodarNoInicio(servico.snapshot().briefing, new Date())) atualizar('inicio');
   else log.info('cache fresco: briefing não executado no início');
 
-  prepararCapturas(servico);
+  prepararCapturas({ painel: () => painel, servico, metas, propostas, sair: () => { saindo = true; app.quit(); } });
 }
 
 function criarPainel(): void {
@@ -113,10 +129,10 @@ function criarPainel(): void {
   painel.on('close', (e) => {
     if (!saindo) { e.preventDefault(); painel?.hide(); logApp?.info('painel ocultado (o X só oculta)'); }
   });
-  painel.on('show', () => logApp?.info('painel visível'));
-  painel.on('hide', () => logApp?.info('painel oculto'));
   // Windows desligando/reiniciando/encerrando a sessão: não segurar o encerramento por causa do "X só oculta".
   painel.on('session-end', () => { saindo = true; });
+  painel.on('show', () => logApp?.info('painel visível'));
+  painel.on('hide', () => logApp?.info('painel oculto'));
   painel.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   painel.webContents.on('will-navigate', (e) => e.preventDefault());
 
@@ -153,81 +169,4 @@ function criarBandeja(atualizar: () => void): void {
     { label: 'Sair', click: () => { saindo = true; app.quit(); } },
   ]));
   bandeja.on('click', alternarTudo);
-}
-
-/**
- * Verificação visual: com STICKY_SHOT_DIR definido, grava PNGs do painel (carregando e pronto).
- * STICKY_SHOT_QUIT=1 encerra o app depois da última captura. Não faz nada em uso normal.
- */
-function prepararCapturas(servico: BriefingService): void {
-  const dir = process.env.STICKY_SHOT_DIR;
-  if (!dir) return;
-  mkdirSync(dir, { recursive: true });
-  let n = 0;
-  const log = criarLogger(caminhos.logs(), 'capturas.log');
-  if (process.env.STICKY_SHOT_TRACE === '1' && painel) {
-    // Diagnóstico de rolagem: registra cada evento de scroll, quem estava com foco e chamadas a scrollIntoView.
-    painel.webContents.on('console-message', (...args: unknown[]) => {
-      const e = args[0] as { message?: string };
-      const msg = typeof args[2] === 'string' ? args[2] : e?.message;
-      if (msg?.startsWith('TRACE ')) log.info(msg.slice(0, 110));
-    });
-    painel.webContents.on('did-finish-load', () => {
-      void painel?.webContents.executeJavaScript(`(() => {
-        const el = document.querySelector('.app');
-        for (const t of ['wheel', 'keydown', 'pointerdown']) window.addEventListener(t, (e) => console.log('TRACE entrada-do-usuario ' + t + (e.key ? ' ' + e.key : '')), true);
-        el.addEventListener('scroll', () => console.log('TRACE scrollTop=' + Math.round(el.scrollTop) + ' foco=' + document.activeElement?.tagName + '.' + (document.activeElement?.className || '')));
-        const o = Element.prototype.scrollIntoView;
-        Element.prototype.scrollIntoView = function (...a) { console.log('TRACE scrollIntoView ' + this.tagName + '.' + this.className); return o.apply(this, a); };
-      })()`);
-    });
-  }
-  const foto = async (nome: string, rolarPara?: 'meio' | 'fim') => {
-    if (!painel || painel.isDestroyed()) return;
-    try {
-      if (rolarPara) {
-        await painel.webContents.executeJavaScript(
-          `(() => { const el = document.querySelector('.app'); el.scrollTo(0, ${rolarPara === 'fim' ? 'el.scrollHeight' : 'el.scrollHeight / 2 - el.clientHeight / 2'}); })()`,
-        );
-        await new Promise((r) => setTimeout(r, 250));
-      }
-      const img = await Promise.race([
-        painel.webContents.capturePage(),
-        new Promise<never>((_, rej) => setTimeout(() => rej(new Error('capturePage demorou mais de 8 s')), 8000)),
-      ]);
-      const png = img.toPNG();
-      writeFileSync(join(dir, `${String(++n).padStart(2, '0')}-${nome}.png`), png);
-      log.info('captura', { nome, bytes: png.length, visivel: painel.isVisible() });
-    } catch (e) {
-      log.erro('captura falhou', { nome, erro: String(e).slice(0, 100) });
-    }
-  };
-  // A execução já começou (síncrono em aoFicarPronto) antes de nos inscrevermos: agenda a foto do "carregando".
-  const comecouExecutando = servico.snapshot().executando;
-  let tirouCarregando = comecouExecutando;
-  if (comecouExecutando) setTimeout(() => void foto('carregando'), 4000);
-  servico.aoMudar((s) => {
-    if (!s.executando && tirouCarregando) {
-      setTimeout(async () => {
-        await foto('pronto');
-        await foto('meio', 'meio');
-        await foto('fim', 'fim');
-        if (process.env.STICKY_SHOT_QUIT === '1') { saindo = true; app.quit(); }
-      }, 900);
-    }
-  });
-  if (!servico.snapshot().executando) {
-    setTimeout(async () => {
-      await foto('cache');
-      if (process.env.STICKY_SHOT_REFRESH === '1') {
-        // simula o clique em "Atualizar" com o cache na tela
-        tirouCarregando = true;
-        void servico.atualizar('manual');
-        setTimeout(() => void foto('carregando'), 3000);
-      } else if (process.env.STICKY_SHOT_QUIT === '1') {
-        saindo = true;
-        app.quit();
-      }
-    }, 2500);
-  }
 }

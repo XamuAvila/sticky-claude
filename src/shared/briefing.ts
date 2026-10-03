@@ -52,12 +52,10 @@ export type Prioridade = z.infer<typeof PrioridadeWire>;
 export const AgendaDados = z.object({ eventos: z.array(EventoWire) });
 export const EmailsDados = z.object({ itens: z.array(EmailItemWire), suspeitos: z.array(SuspeitoWire) });
 export const FocoDados = z.object({ prioridades: z.array(PrioridadeWire) });
-export const MetasDados = z.object({ total: z.number() });
 
 export type AgendaDados = z.infer<typeof AgendaDados>;
 export type EmailsDados = z.infer<typeof EmailsDados>;
 export type FocoDados = z.infer<typeof FocoDados>;
-export type MetasDados = z.infer<typeof MetasDados>;
 
 // ---- Estado guardado em cache e mostrado no painel ----
 
@@ -78,12 +76,11 @@ export const BriefingSchema = z.object({
   gatilho: z.enum(['inicio', 'manual']).optional(),
   agenda: secao(AgendaDados),
   emails: secao(EmailsDados),
-  metas: secao(MetasDados),
   foco: secao(FocoDados),
 });
 
 export type Briefing = z.infer<typeof BriefingSchema>;
-export type SecaoNome = 'agenda' | 'emails' | 'metas' | 'foco';
+export type SecaoNome = 'agenda' | 'emails' | 'foco';
 
 export type Rede = 'ok' | 'aguardando' | 'sem-internet';
 
@@ -99,7 +96,6 @@ export function briefingVazio(): Briefing {
     versao: 1,
     agenda: { status: 'vazio' },
     emails: { status: 'vazio' },
-    metas: { status: 'vazio' },
     foco: { status: 'vazio' },
   };
 }

@@ -28,6 +28,12 @@ describe.skipIf(!LIVE)('briefing ao vivo', () => {
         tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
         salvar: () => undefined,
         log,
+        // uma meta sintética parada há 9 dias, para ver se o foco a considera
+        metas: () => [{
+          id: 'live-1', nome: 'Aprender violão', status: 'ativa' as const, porque: 'Tocar com os amigos',
+          proximoPasso: 'Praticar 2 acordes', criadaEm: new Date(Date.now() - 20 * 86_400_000).toISOString(), atualizadaEm: '',
+          ultimoAvancoEm: new Date(Date.now() - 9 * 86_400_000).toLocaleDateString('sv-SE'),
+        }],
       });
 
       const t0 = Date.now();
@@ -37,7 +43,10 @@ describe.skipIf(!LIVE)('briefing ao vivo', () => {
         ms: Date.now() - t0,
         agenda: { status: b.agenda.status, eventos: b.agenda.dados?.eventos.length, erro: b.agenda.erro },
         emails: { status: b.emails.status, itens: b.emails.dados?.itens.length, suspeitos: b.emails.dados?.suspeitos.length, erro: b.emails.erro },
-        foco: { status: b.foco.status, prioridades: b.foco.dados?.prioridades.length, erro: b.foco.erro },
+        foco: {
+          status: b.foco.status, prioridades: b.foco.dados?.prioridades.length, erro: b.foco.erro,
+          origens: b.foco.dados?.prioridades.map((p) => p.origem),
+        },
       };
       console.log('RESUMO AO VIVO', JSON.stringify(resumo));
       console.log('LOG (somente metadados):\n' + readFileSync(join(caminhos.logs(), 'app.log'), 'utf8'));

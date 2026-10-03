@@ -4,6 +4,7 @@ import {
   type AgendaDados, type EmailsDados, type FocoDados,
 } from '@shared/briefing';
 import { lerData } from '@shared/agenda';
+import { limpar } from '@shared/texto';
 
 export type Resultado<T> = { ok: true; dados: T; descartados: number } | { ok: false; erro: string };
 
@@ -11,11 +12,7 @@ const MAX_EVENTOS = 60;
 const MAX_EMAILS = 8;
 const MAX_SUSPEITOS = 5;
 
-/** Tira controles e espaços repetidos e limita o tamanho (texto de e-mail/convite é não confiável). */
-export function limpar(s: string, max: number): string {
-  // eslint-disable-next-line no-control-regex
-  return s.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
-}
+export { limpar };
 
 /** Extrai o 1º objeto JSON de um texto: aceita cerca ```json e prosa em volta. */
 export function extrairJson(texto: string): unknown {
