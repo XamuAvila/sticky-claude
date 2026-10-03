@@ -47,6 +47,13 @@ describe('segurança (leitura somente)', () => {
     expect(chave).toEqual(['src/main/claude/policy.ts']);
   });
 
+  it('só autoinicio.ts mexe na inicialização do Windows, e ninguém edita o registro por conta própria', () => {
+    const login = fonte.filter((f) => /setLoginItemSettings/.test(f.txt)).map((f) => f.rel);
+    expect(login).toEqual(['src/main/autoinicio.ts']);
+    const registro = fonte.filter((f) => /reg\.exe|\breg (add|delete)|winreg|spawn\(\s*['"]reg['"]/i.test(f.txt)).map((f) => f.rel);
+    expect(registro).toEqual([]);
+  });
+
   it('sem telemetria própria: nenhuma chamada de rede além do DNS de checagem', () => {
     const rede = fonte.filter((f) => /\bfetch\(|XMLHttpRequest|net\.request|axios|https?\.request/.test(f.txt)).map((f) => f.rel);
     expect(rede).toEqual([]);

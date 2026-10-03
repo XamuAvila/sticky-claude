@@ -1,0 +1,43 @@
+# Empacotamento do Sticky Claude (Windows 11, SEM administrador).
+#   npm run dist   -> release\Sticky-Claude-Instalador-<versao>.exe (instalador por usuário) e Sticky-Claude-Portatil-<versao>.exe
+#   npm run pack   -> release\win-unpacked (para testar sem instalar)
+appId: com.samuc.stickyclaude
+productName: Sticky Claude
+copyright: Uso pessoal
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**
+  - resources/**
+  - package.json
+asar: true
+# só os idiomas que o app usa: menos arquivos e instalador menor
+electronLanguages:
+  - pt-BR
+  - en-US
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  icon: resources/icon.png
+  # Sem certificado de assinatura (uso pessoal). Usar signExecutable: false (e NÃO signAndEditExecutable: false) mantém o
+  # ícone e os metadados no .exe e o build roda sem privilégios, sem esbarrar nos links simbólicos do winCodeSign.
+  signExecutable: false
+nsis:
+  # Por usuário, sem administrador: instala em %LOCALAPPDATA%\Programs\Sticky Claude
+  oneClick: false
+  perMachine: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: false
+  createDesktopShortcut: false
+  createStartMenuShortcut: true
+  shortcutName: Sticky Claude
+  # Os seus dados (metas, post-its, conversas) em %APPDATA%\StickyClaude NUNCA são apagados ao desinstalar
+  deleteAppDataOnUninstall: false
+  include: build/installer.nsh
+  artifactName: Sticky-Claude-Instalador-${version}.${ext}
+portable:
+  artifactName: Sticky-Claude-Portatil-${version}.${ext}

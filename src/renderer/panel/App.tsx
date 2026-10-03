@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { haQuanto } from '@shared/agenda';
 import type { BriefingSnapshot } from '@shared/briefing';
 import { Agenda } from './Agenda';
+import { Configuracoes } from './Configuracoes';
 import { Emails } from './Emails';
 import { MetasCard } from './Metas';
 import { PostitsCard } from './PostitsCard';
@@ -86,6 +87,8 @@ export function App() {
       </Secao>
 
       <PostitsCard />
+
+      <Configuracoes />
 
       <PropostaDialog />
     </main>

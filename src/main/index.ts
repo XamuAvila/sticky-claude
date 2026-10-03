@@ -3,6 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { release, uptime } from 'node:os';
 import { join } from 'node:path';
 import { briefingVazio } from '@shared/briefing';
+import { AutoInicio, MOTIVO_SO_EMPACOTADO, caminhoDeInicializacao, criarBackendElectron, criarBackendFalso } from './autoinicio';
+import { registrarIpcAutoInicio } from './autoinicio-ipc';
+import { gravarPreferencias, lerPreferencias } from './preferencias';
 import { DIAS_PARADA_PADRAO } from '@shared/metas';
 import { criarExecutor } from './briefing/executor';
 import { executorFalso } from './briefing/falso';
@@ -49,7 +52,9 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 function iniciar(): void {
-  app.setAppUserModelId('com.samuc.stickyclaude');
+  // É também o nome do valor que o Windows grava em HKCU\...\Run. STICKY_APP_USER_MODEL_ID só existe para testar a
+  // inicialização automática com um nome de teste, sem tocar na entrada de verdade do usuário.
+  app.setAppUserModelId(process.env.STICKY_APP_USER_MODEL_ID || 'com.samuc.stickyclaude');
   // STICKY_THEME só existe para testar os dois temas em desenvolvimento; no app empacotado segue sempre o Windows.
   const tema = process.env.STICKY_THEME;
   nativeTheme.themeSource = !app.isPackaged && (tema === 'light' || tema === 'dark') ? tema : 'system';
@@ -81,8 +86,21 @@ function aoFicarPronto(): void {
   const falso = process.env.STICKY_FAKE_CLAUDE === '1' && !app.isPackaged;
   log.info('app iniciado', {
     versao: app.getVersion(), autostart, windows: release(), segundosDesdeBoot: Math.round(uptime()),
-    empacotado: app.isPackaged,
+    empacotado: app.isPackaged, portatil: !!process.env.PORTABLE_EXECUTABLE_FILE,
   });
+
+  // Inicialização com o Windows: só liga com a confirmação do usuário; desligar remove a entrada de verdade.
+  const caminhoLogin = caminhoDeInicializacao(process.env, process.execPath);
+  const usaEntradaFalsa = !app.isPackaged && process.env.STICKY_FAKE_AUTOINICIO === '1';
+  const auto = new AutoInicio({
+    backend: usaEntradaFalsa ? criarBackendFalso(join(dadosDir(), 'fake-autoinicio.json')) : app.isPackaged ? criarBackendElectron(app, caminhoLogin) : null,
+    motivo: MOTIVO_SO_EMPACOTADO,
+    caminho: caminhoLogin,
+    jaConfirmou: () => lerPreferencias().autoInicioConfirmado === true,
+    guardarConfirmacao: () => gravarPreferencias({ autoInicioConfirmado: true }),
+    log,
+  });
+  registrarIpcAutoInicio(ipcMain, auto);
 
   // Metas locais + propostas do Claude (que só valem depois do "Aplicar" do usuário).
   const metas = new MetasStore({ arquivo: caminhos.metas(), backupsDir: caminhos.backups(), agora: () => new Date(), novoId: randomUUID, log });

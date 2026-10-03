@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { EstadoAutoInicio, ResultadoAuto } from '@shared/autoinicio';
 import type { BriefingSnapshot } from '@shared/briefing';
 import type { Meta, PropostaMetas, Retorno, SnapshotMetas } from '@shared/metas';
 import type { EventoPostit, ResumoPostit, VisaoPostit } from '@shared/postits';
@@ -43,6 +44,10 @@ const api: StickyApi = {
     ocultar: (id) => chamar<void>('postit:ocultar', id),
     excluir: (id) => chamar<Retorno>('postit:excluir', id),
     aoEvento: (cb) => assinar<EventoPostit>('postit:evento', cb),
+  },
+  autoinicio: {
+    estado: () => chamar<EstadoAutoInicio>('autoinicio:estado'),
+    definir: (ligar, confirmado) => chamar<ResultadoAuto>('autoinicio:definir', ligar, confirmado),
   },
   postits: {
     listar: () => chamar<ResumoPostit[]>('postits:listar'),

@@ -186,6 +186,19 @@ dialog.dialogo label input, dialog.dialogo label select, dialog.dialogo label te
 .ponto-cor { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.18); }
 .nome-postit { overflow-wrap: anywhere; font-weight: 600; }
 
+/* Interruptor */
+.interruptor { position: relative; display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.interruptor.desabilitado { cursor: default; opacity: 0.6; }
+/* O controle de verdade cobre todo o interruptor (invisível): é ele que recebe o clique e o foco. */
+.interruptor input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: inherit; z-index: 1; }
+.trilho { width: 40px; height: 22px; border-radius: 99px; background: var(--esqueleto); border: 1px solid var(--borda); position: relative; flex: none; transition: background 0.15s; }
+.bolinha { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--suave); transition: transform 0.15s, background 0.15s; }
+.interruptor input:checked + .trilho { background: var(--destaque); border-color: transparent; }
+.interruptor input:checked + .trilho .bolinha { transform: translateX(18px); background: #2b2100; }
+.interruptor input:focus-visible + .trilho { outline: 2px solid var(--texto); outline-offset: 2px; }
+.ajuda { color: var(--suave); font-size: 13px; margin: 8px 0 0; }
+dialog.dialogo code { font-family: 'Cascadia Mono', Consolas, monospace; font-size: 12px; overflow-wrap: anywhere; }
+
 .abrindo { display: grid; place-items: center; height: 100%; color: var(--suave); }
 
 @media (prefers-reduced-motion: reduce) {

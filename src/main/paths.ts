@@ -11,6 +11,7 @@ export const caminhos = {
   briefing: () => join(dadosDir(), 'briefing.json'),
   servidores: () => join(dadosDir(), 'servidores.json'),
   config: () => join(dadosDir(), 'config.json'),
+  preferencias: () => join(dadosDir(), 'preferencias.json'),
   metas: () => join(dadosDir(), 'metas.json'),
   backups: () => join(dadosDir(), 'backups'),
   logs: () => join(dadosDir(), 'logs'),

@@ -14,7 +14,7 @@ O app **usa a sua assinatura do Claude** por meio do `claude.exe` (Claude Code) 
 | M1 Bandeja + briefing | **Pronto** |
 | M2 Metas | **Pronto** |
 | M3 Post-its persistentes | **Pronto** |
-| M4 Inicialização automática + instalador | Pendente |
+| M4 Inicialização automática + instalador | Código, instalador e portátil prontos e verificados **sem tocar no seu Windows**. Falta o roteiro no Windows real (instalar, ligar a inicialização, reiniciar), que depende da sua confirmação |
 | M5 Pílula no topo da tela | Pendente |
 
 ## O que o M1 faz
@@ -71,6 +71,33 @@ Cada **post-it é uma janela pequena, sem moldura e redimensionável, com uma co
 
 A cópia local da conversa fica em `%APPDATA%\StickyClaude\conversas\<id>.json` (até 300 mensagens). O contexto de verdade fica na sessão do Claude. Excluir um post-it não apaga a sessão do histórico do Claude Code; para isso use `claude purge`.
 
+## Instalar, usar e desinstalar (M4)
+
+Gerar os pacotes (a partir do código): `npm run dist`. Saem em `release\`:
+
+| Arquivo | O que é |
+|---|---|
+| `Sticky-Claude-Instalador-0.1.0.exe` | Instalador **por usuário, sem administrador** (instala em `%LOCALAPPDATA%\Programs\Sticky Claude`, atalho no Menu Iniciar). **Recomendado.** |
+| `Sticky-Claude-Portatil-0.1.0.exe` | Um arquivo só, sem instalar. Abre mais devagar (~20 s), porque se extrai numa pasta temporária a cada abertura. |
+
+Os pacotes **não são assinados** (uso pessoal): o Windows SmartScreen pode avisar "Editor desconhecido". Clique em **Mais informações > Executar assim mesmo**.
+
+**Instalar:** execute o instalador e siga as telas. Para atualizar, instale a versão nova por cima (seus dados ficam intactos).
+
+**Iniciar com o Windows:** no painel, cartão **Configurações > Iniciar com o Windows**.
+- Na **primeira vez** o app pergunta antes de criar qualquer coisa e mostra exatamente o que fará.
+- A única alteração no sistema é **uma entrada em `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`** (só o seu usuário, sem administrador), com o nome `com.samuc.stickyclaude` e o valor `"<caminho do .exe>" --autostart`. Para conferir: `reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
+- **Desligar o interruptor remove a entrada de verdade** (o app relê o registro para ter certeza e avisa se não conseguiu). A entrada também aparece em Configurações do Windows > Aplicativos > Inicialização; se você a desativar por lá, o painel avisa.
+- Ao iniciar pelo login o app espera a rede subir (até ~2 minutos), roda o briefing, mostra o painel e reabre os post-its.
+- Rodando a partir do código, o interruptor fica desabilitado (a entrada apontaria para o Electron de desenvolvimento).
+- No **portátil**, a entrada aponta para o `.exe` que você abriu (se você mover o arquivo, desligue e ligue de novo).
+
+**Desinstalar:**
+1. Instalado: Configurações do Windows > Aplicativos > Aplicativos instalados > **Sticky Claude** > Desinstalar. O desinstalador remove também a entrada de inicialização.
+2. Portátil: desligue **Iniciar com o Windows** no painel (isso remove a entrada), saia pela bandeja e apague o `.exe`.
+3. Os seus dados **não são apagados** pela desinstalação: `%APPDATA%\StickyClaude\` (metas, post-its, conversas). Apague a pasta se quiser limpar tudo.
+4. As sessões dos post-its ficam no histórico do Claude Code (`~\.claude\projects\…StickyClaude-workspace`). Para apagá-las: `claude purge "%APPDATA%\StickyClaude\workspace"`.
+
 ## Requisitos
 
 - Windows 11.
@@ -91,9 +118,9 @@ npx electron .                           # ou: npm run dev
 ## Testes
 
 ```powershell
-npm test                  # 195 testes unitários (parser, agenda, metas, post-its, geometria, política de ferramentas, serviços, rede, armazenamento)
+npm test                  # 210 testes unitários (parser, agenda, metas, post-its, geometria, inicialização, política de ferramentas, serviços, rede, armazenamento)
 npm run typecheck
-npm run build; npm run test:e2e   # 18 testes E2E no app real (cliques, digitação, reinício do app), com dados temporários e sem gastar assinatura
+npm run build; npm run test:e2e   # 21 testes E2E no app real (cliques, digitação, reinício do app), com dados temporários e sem gastar assinatura
 ```
 
 Testes de integração **reais**, que consomem a assinatura (imprimem só contagens e resultados):
@@ -113,6 +140,13 @@ Verificações no app real **sem gastar assinatura** (executor falso, dados sint
 node scripts/capturar-postits.mjs   # capturas das janelas dos post-its: conversa, menu, instruções, cores
 ```
 
+Verificação dos **pacotes** (precisa de `npm run dist`); nenhuma instala nada nem liga a inicialização automática:
+
+```powershell
+node scripts/verificar-pacote.mjs      # app empacotado (release\win-unpacked) com o Claude REAL: briefing, post-it, interruptor e registro intacto
+.\scripts\verificar-portatil.ps1       # versão portátil, com briefing em cache (não gasta assinatura): abre, loga, cria o post-it
+```
+
 Com `STICKY_DATA_DIR` definido (testes e verificações), o app também isola a pasta interna do Electron (`<dados>\electron`), então nunca esbarra no seu Sticky Claude de verdade.
 
 ## Segurança e privacidade
@@ -128,7 +162,7 @@ Com `STICKY_DATA_DIR` definido (testes e verificações), o app também isola a 
 - **Sem transcrição no briefing.** O briefing usa `--no-session-persistence`, então o conteúdo dos e-mails não é gravado em `~/.claude/projects`. (Os post-its **precisam** da sessão gravada para retomar a conversa; o log do app, mesmo assim, nunca recebe texto de conversa.)
 - **Nenhum `claude.exe` órfão.** Ao sair do app, os processos do Claude em andamento são encerrados.
 - **Sem telemetria do app.** A única atividade de rede do app é uma consulta de DNS para saber se a internet voltou. Os dados ficam em `%APPDATA%\StickyClaude\`. O log (`logs\app.log`) tem só metadados (fonte, tempo, tokens) e descarta texto longo.
-- **Sem admin** e nenhuma alteração de configuração do sistema.
+- **Sem admin** e nenhuma alteração de configuração do sistema além da entrada de inicialização (só do seu usuário, só com a sua confirmação, e removida ao desligar). Um teste (`tests/seguranca.test.ts`) garante que só `src/main/autoinicio.ts` mexe nisso e que nenhum arquivo edita o registro por conta própria.
 
 ## Onde ficam os dados
 

@@ -1,3 +1,4 @@
+import type { EstadoAutoInicio, ResultadoAuto } from '@shared/autoinicio';
 import type { BriefingSnapshot } from '@shared/briefing';
 import type { Meta, MetaEntrada, MetaEntradaParcial, PropostaMetas, Retorno, SnapshotMetas } from '@shared/metas';
 import type { EventoPostit, ResumoPostit, VisaoPostit } from '@shared/postits';
@@ -38,6 +39,12 @@ export interface StickyApi {
     /** Único jeito de apagar um post-it. */
     excluir(id: string): Promise<Retorno>;
     aoEvento(cb: (e: EventoPostit) => void): () => void;
+  };
+  /** Inicialização com o Windows (entrada em HKCU\...\Run, só do usuário). */
+  autoinicio: {
+    estado(): Promise<EstadoAutoInicio>;
+    /** Ligar exige `confirmado` (clique no diálogo) na primeira vez. */
+    definir(ligar: boolean, confirmado: boolean): Promise<ResultadoAuto>;
   };
   /** Lista de post-its (painel). */
   postits: {
