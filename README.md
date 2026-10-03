@@ -113,7 +113,7 @@ Gerar os pacotes (a partir do código): `npm run dist`. Saem em `release\`:
 
 Os pacotes **não são assinados** (uso pessoal): o Windows SmartScreen pode avisar "Editor desconhecido". Clique em **Mais informações > Executar assim mesmo**.
 
-**Instalar:** execute o instalador e siga as telas. Para atualizar, instale a versão nova por cima (seus dados ficam intactos).
+**Instalar:** execute o instalador e siga as telas. Para atualizar, instale a versão nova por cima: seus dados e a inicialização automática ficam como estavam. (Ao atualizar, quem roda é o desinstalador da versão que já está instalada. Se ela for anterior ao conserto em `build/installer.nsh`, a primeira atualização ainda desliga a inicialização, e basta religar o interruptor; das seguintes em diante ela é preservada.)
 
 **Iniciar com o Windows:** no painel, cartão **Configurações > Iniciar com o Windows**.
 - Na **primeira vez** o app pergunta antes de criar qualquer coisa e mostra exatamente o que fará.
@@ -177,6 +177,16 @@ Verificação dos **pacotes** (precisa de `npm run dist`); nenhuma instala nada 
 ```powershell
 node scripts/verificar-pacote.mjs      # app empacotado (release\win-unpacked) com o Claude REAL: briefing, post-it, interruptor e registro intacto
 .\scripts\verificar-portatil.ps1       # versão portátil, com briefing em cache (não gasta assinatura): abre, loga, cria o post-it
+```
+
+Verificação do **instalador** e do **roteiro de aceite** (estes mexem na SUA instalação e na entrada de inicialização do seu usuário):
+
+```powershell
+node scripts/verificar-instalador.mjs                # atualizar por cima preserva a inicialização; desinstalar remove entrada, arquivos e atalho e preserva seus dados; reinstalar; termina instalado e com a inicialização ligada
+node scripts/aceite-instalado.mjs antes              # app instalado + dados reais + Claude real: briefing, interruptor (reg query), "X só oculta", mesma sessão
+node scripts/aceite-instalado.mjs depois             # depois de REINICIAR o Windows: abriu sozinho no login? mesmo post-it, mesma conversa?
+node scripts/aceite-instalado.mjs depois --sem-reinicio   # simula o login executando o comando exato da entrada do registro
+node scripts/aceite-instalado.mjs limpar             # apaga o post-it de teste e a sessão dele (não mexe na inicialização)
 ```
 
 Com `STICKY_DATA_DIR` definido (testes e verificações), o app também isola a pasta interna do Electron (`<dados>\electron`), então nunca esbarra no seu Sticky Claude de verdade.

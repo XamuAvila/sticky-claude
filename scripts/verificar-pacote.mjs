@@ -5,11 +5,13 @@
 //   node scripts/verificar-pacote.mjs <caminho.exe>   -> outro executável (ex.: o portátil)
 import { _electron as electron } from 'playwright-core';
 import { execSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-const exe = resolve(process.argv[2] ?? join('release', 'win-unpacked', 'Sticky Claude.exe'));
+//   --rapido  não usa o Claude: abre com um briefing em cache de teste (um evento daqui a 25 min) e confere a pílula
+const rapido = process.argv.includes('--rapido');
+const exe = resolve(process.argv.slice(2).find((a) => !a.startsWith('--')) ?? join('release', 'win-unpacked', 'Sticky Claude.exe'));
 if (!existsSync(exe)) { console.error('Executável não encontrado:', exe); process.exit(2); }
 const portatil = /portatil|portable/i.test(exe);
 if (portatil) {
@@ -21,6 +23,16 @@ const dados = mkdtempSync(join(tmpdir(), 'sticky-pacote-'));
 const env = { ...process.env, STICKY_DATA_DIR: dados };
 delete env.ELECTRON_RUN_AS_NODE;
 delete env.STICKY_FAKE_CLAUDE; // pacote de verdade: Claude de verdade
+if (rapido) {
+  const agora = new Date().toISOString();
+  const emMin = (m) => new Date(Date.now() + m * 60_000).toISOString();
+  writeFileSync(join(dados, 'briefing.json'), JSON.stringify({
+    versao: 1, geradoEm: agora,
+    agenda: { status: 'ok', atualizadoEm: agora, dados: { eventos: [{ titulo: 'Reunião de teste', inicio: emMin(25), fim: emMin(55), diaInteiro: false }] } },
+    emails: { status: 'ok', atualizadoEm: agora, dados: { itens: [], suspeitos: [] } },
+    foco: { status: 'ok', atualizadoEm: agora, dados: { prioridades: [] } },
+  }));
+}
 if (portatil) env.PORTABLE_EXECUTABLE_FILE = exe; // o wrapper portátil define isto; aqui garantimos o mesmo ambiente
 
 const chaveRun = () => { try { return execSync('reg query HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run', { encoding: 'utf8' }); } catch { return ''; } };
@@ -56,6 +68,21 @@ try {
   await painel.getByRole('button', { name: 'Agora não' }).click();
   ok('recusar não altera o registro (HKCU\\...\\Run idêntico)', chaveRun() === runAntes);
 
+  // pílula do topo da tela (padrão: ligada). Aparece se houver algo para mostrar.
+  if (rapido) {
+    const pilula = await achar('pilula.html');
+    await pilula.locator('.pilula .linha .titulo', { hasText: 'Reunião de teste' }).waitFor({ timeout: 15_000 });
+    const rotulo = await pilula.locator('.pilula .rotulo').innerText();
+    const janela = await app.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows().find((x) => x.getTitle().includes('pílula')); return w ? { visivel: w.isVisible(), topo: w.isAlwaysOnTop(), focavel: w.isFocusable() } : null; });
+    ok('a pílula aparece no app empacotado, sempre no topo e sem foco', !!janela && janela.visivel && janela.topo && !janela.focavel, `"${rotulo}"`);
+    ok('mostra o próximo evento com a contagem regressiva', /^Em (24|25) min$/.test(rotulo));
+    await pilula.locator('.pilula').hover();
+    await pilula.locator('.pilula.aberta').waitFor({ timeout: 5000 });
+    ok('expande ao passar o mouse', true);
+    console.log('(modo rápido: sem Claude; o briefing real e o post-it com o Claude não foram executados)');
+    throw new Error('__fim_rapido__');
+  }
+
   // briefing REAL (3 chamadas ao Claude)
   console.log('… aguardando o briefing real (até 3 min)');
   const t0 = Date.now();
@@ -85,6 +112,8 @@ try {
 
   const log = readFileSync(join(dados, 'logs', 'app.log'), 'utf8');
   ok('log com metadados e sem texto de conversa', log.includes('"empacotado":true') && !log.includes('pronto'));
+} catch (e) {
+  if (String(e?.message) !== '__fim_rapido__') { console.error('ERRO:', e); falhas++; }
 } finally {
   await app.close().catch(() => undefined);
   console.log('registro HKCU\\...\\Run igual ao de antes:', chaveRun() === runAntes);

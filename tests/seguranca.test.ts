@@ -54,6 +54,17 @@ describe('segurança (leitura somente)', () => {
     expect(registro).toEqual([]);
   });
 
+  it('o desinstalador só apaga a entrada de inicialização numa desinstalação de verdade, não numa atualização', () => {
+    // regressão: o instalador roda o desinstalador antigo (--updated) antes de atualizar; sem esta guarda, TODA atualização
+    // desligava a inicialização automática do usuário em silêncio.
+    const nsh = readFileSync(join(RAIZ, 'build', 'installer.nsh'), 'utf8');
+    const macro = /!macro customUnInstall([\s\S]*?)!macroend/.exec(nsh)?.[1] ?? '';
+    expect(macro).toMatch(/\$\{ifNot\} \$\{isUpdated\}[\s\S]*DeleteRegValue[\s\S]*\$\{endIf\}/);
+    // e só apaga a entrada do próprio app, nunca outras da chave Run
+    const nomes = [...macro.matchAll(/DeleteRegValue HKCU "[^"]+" "([^"]+)"/g)].map((m) => m[1]);
+    expect(nomes).toEqual(['com.samuc.stickyclaude', 'com.samuc.stickyclaude']);
+  });
+
   it('sem telemetria própria: nenhuma chamada de rede além do DNS de checagem', () => {
     const rede = fonte.filter((f) => /\bfetch\(|XMLHttpRequest|net\.request|axios|https?\.request/.test(f.txt)).map((f) => f.rel);
     expect(rede).toEqual([]);
