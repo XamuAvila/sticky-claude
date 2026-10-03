@@ -2,10 +2,11 @@
 //   STICKY_SHOT_QUIT=1      encerra o app depois da última captura
 //   STICKY_SHOT_REFRESH=1   com cache na tela, simula o clique em "Atualizar"
 //   STICKY_SHOT_PROPOSTA=1  cria uma proposta de alteração das metas (como o Claude faria) e captura o diálogo
+//   STICKY_SHOT_PROPOSTA_JSON=arquivo.json   usa este metas-patch em vez do exemplo embutido
 //   STICKY_SHOT_CLICK=a|b   clica nos seletores CSS, na ordem, e captura depois de cada clique
 //   STICKY_SHOT_TRACE=1     registra eventos de rolagem/entrada do usuário (diagnóstico)
 // Não faz nada em uso normal (sem STICKY_SHOT_DIR).
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { BrowserWindow } from 'electron';
 import type { BriefingService } from './briefing/service';
@@ -61,7 +62,9 @@ export function prepararCapturas({ painel, servico, metas, propostas, sair }: Co
     const w = painel();
     if (process.env.STICKY_SHOT_PROPOSTA === '1') {
       const alvo = metas.snapshot().metas[0];
-      const patch = {
+      // STICKY_SHOT_PROPOSTA_JSON: arquivo com o metas-patch a propor (usado nos prints do README, com dados fictícios)
+      const arquivoPatch = process.env.STICKY_SHOT_PROPOSTA_JSON;
+      const patch = arquivoPatch ? JSON.parse(readFileSync(arquivoPatch, 'utf8')) : {
         operacoes: [
           ...(alvo ? [{ op: 'atualizar', id: alvo.id, campos: { prazo: '2026-12-15', proximoPasso: 'Separar 15 min hoje para listar os 3 maiores riscos' } }, { op: 'avanco', id: alvo.id, nota: 'Revisei o escopo com a equipe' }] : []),
           { op: 'criar', meta: { nome: 'Correr 5 km sem parar', status: 'ativa', prazo: '2026-11-30', porque: 'Voltar a ter condicionamento', proximoPasso: 'Caminhar rápido 15 min amanhã cedo' } },
